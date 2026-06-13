@@ -26,6 +26,7 @@ This document is the **single, authoritative V1 database schema** for Store Audi
 | 13 | Storage access is server-side only in V1. No direct client reads or uploads. Signed URLs from DB-backed authorization only. |
 | 14 | `audit_questions` includes `question_key text NOT NULL UNIQUE` for idempotent seed. `areas(name)` has UNIQUE constraint. |
 | 15 | Migration must begin with `CREATE EXTENSION IF NOT EXISTS pgcrypto` before `gen_random_uuid()` usage. |
+| 16 | Areas and stores are operational data, not fixed seed-only data. Seed creates only the Dublin starter area/store. Future stores are created through the app by admin or area_manager. Area creation remains admin-only in V1. |
 
 ---
 
@@ -189,7 +190,7 @@ UNIQUE constraint: `UNIQUE (section_id, order_index)` — stable ordering within
 | `max_score` | `numeric` | NOT NULL | `5` | Snapshot of `audit_questions.max_score` at audit time |
 | `is_na` | `boolean` | NOT NULL | `false` | If true, excluded from scoring |
 | `comment` | `text` | NULL | `NULL` | |
-| `is_critical_flag` | `boolean` | NOT NULL | `false` | Auditor-flagged critical issue |
+| `is_critical_flag` | `boolean` | NOT NULL | `false` | User-flagged critical issue |
 | `created_at` | `timestamptz` | NOT NULL | `now()` | |
 | `updated_at` | `timestamptz` | NOT NULL | `now()` | Managed by `handle_updated_at()` trigger |
 
@@ -497,6 +498,8 @@ Used by: all RLS policies as the "admin bypass" condition in `USING` expressions
 | UPDATE | Yes | No | No | No |
 | DELETE | Yes | No | No | No |
 
+**Area management rule:** Area creation and updates are admin-only in V1. Area managers are assigned to an existing area through `profiles.area_id`; they do not create or edit `areas`.
+
 ---
 
 ### `stores`
@@ -504,9 +507,13 @@ Used by: all RLS policies as the "admin bypass" condition in `USING` expressions
 | Operation | admin | area_manager | store_manager | leader |
 |---|---|---|---|---|
 | SELECT | All rows | `area_id = get_my_area_id()` | `id = get_my_store_id()` | `id = get_my_store_id()` |
-| INSERT | Yes | No | No | No |
-| UPDATE | Yes | No | No | No |
+| INSERT | Yes | Target rule: `area_id = get_my_area_id()` | No | No |
+| UPDATE | Yes | Target rule: `area_id = get_my_area_id()` and cannot move store outside assigned area | No | No |
 | DELETE | Yes | No | No | No |
+
+**Store management rule:** Stores are not fixed seed-only data. Admin can create, update, and manage all stores. Area managers may create and update stores only inside their assigned area. Store managers and leaders cannot create stores and can only view their own assigned store.
+
+**First migration compatibility note:** If `001_initial_schema.sql` still has admin-only `stores_insert` and `stores_update` policies, the schema is safe for the first migration but does not yet support the area-manager store-management UI. Add a follow-up migration before building that UI. The follow-up RLS must scope area-manager INSERT/UPDATE to `area_id = get_my_area_id()` and must prevent an area manager from moving an existing store into or out of another area.
 
 ---
 
@@ -765,12 +772,14 @@ This design is conservative. It does not prevent the feature — it defers the i
 
 | Table | Natural key column | Seed content |
 |---|---|---|
-| `areas` | `name` | Development sample areas (e.g., "North Region", "South Region") |
-| `stores` | `code` | Development sample stores per area |
+| `areas` | `name` | Minimal starter area only: `Dublin` |
+| `stores` | `code` | Minimal starter store only: `Dublin Airport` with store code `5292`, linked to `Dublin` |
 | `checklist_sections` | `slug` | 10 sections from app-bible.md (in English, in order) |
 | `audit_questions` | `question_key` | ~53 questions distributed across 10 sections; `is_critical = true` for Service & Customer Interaction and Scenario Question sections |
 
 The admin user profile is **not seeded via SQL**. See below.
+
+Stores and areas are operational records, not permanent seed-only fixtures. Seed files should not become the normal workflow for adding new stores. After the starter data exists, future stores must be created through the app by admin or, after the required RLS follow-up migration, by area_manager users within their assigned area. Future area creation remains admin-only in V1.
 
 ### Idempotency
 
@@ -792,7 +801,7 @@ There is no `AFTER INSERT ON auth.users` trigger in V1. **The admin user and all
 
 ```
 1. areas                     (no dependencies)
-2. stores                    (depends on: areas)
+2. stores                    (depends on: areas; starter store only)
 3. checklist_sections        (no dependencies)
 4. audit_questions           (depends on: checklist_sections)
 5. Admin profile             (manual: Supabase Dashboard → Auth → New User → insert profiles row)
@@ -811,6 +820,7 @@ There is no `AFTER INSERT ON auth.users` trigger in V1. **The admin user and all
 - **`checklist_sections` trigger registration:** `handle_updated_at()` must be registered on `checklist_sections` explicitly. This was previously described as insert-only and may be missed in migration authoring.
 - **`data/defaultChecklist.ts` is an empty array:** Must be populated with the 10 sections and ~53 questions before Phase 3.4 seed execution.
 - **ON DELETE RESTRICT for profiles.store_id/area_id:** Stores and areas with assigned profiles cannot be deleted. Admin must reassign or remove profiles first. Acceptable for V1 but may need a cascade or soft-delete strategy later.
+- **Area-manager store writes require follow-up migration if not in `001_initial_schema.sql`:** The current first migration may intentionally keep `stores_insert` and `stores_update` admin-only. Before building area-manager store management UI, add a follow-up migration that allows area_manager INSERT/UPDATE only where `area_id = get_my_area_id()` and prevents cross-area reassignment.
 - **store_manager progress tracking deferred:** Direct UPDATE on `action_plans` and `action_plan_items` is denied for non-admin in V1. A server-side RPC must be built before store managers can track action item completion.
 - **`data/defaultChecklist.ts` TypeScript alignment (future task):** `types/audit.ts` `AuditPhoto` should later be updated to use `answerId`, `storagePath`, `createdAt` to match the DB column names. Not required for this migration.
 - **`types/report.ts` `ActionPlan` alignment (future task):** Should later include `status`, `focusArea`, `summary`, `generatedByAi` fields to match the DB `action_plans` table. Not required for this migration.

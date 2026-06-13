@@ -176,6 +176,7 @@ feat: configure Supabase clients and environment
 
 ## 3.1 Schema SQL
 
+- [ ] Tabela `areas` criada
 - [ ] Tabela `profiles` criada
 - [ ] Tabela `stores` criada
 - [ ] Tabela `audits` criada
@@ -206,13 +207,24 @@ feat: configure Supabase clients and environment
 - [ ] RLS ativado em `action_plans`
 - [ ] RLS ativado em `action_plan_items`
 - [ ] Admin pode gerenciar tudo
+- [ ] Admin pode criar e atualizar todas as áreas
+- [ ] Admin pode criar e atualizar todas as lojas
 - [ ] Area Manager vê apenas lojas da área
+- [ ] Area Manager pode criar e atualizar lojas somente dentro da própria área após follow-up RLS específico
+- [ ] Area Manager não cria nem atualiza áreas em V1
 - [ ] Store Manager vê apenas a própria loja
+- [ ] Store Manager não cria lojas
 - [ ] Leader vê auditorias da própria loja
+- [ ] Leader não cria lojas
 - [ ] Auditoria Completed não pode ser editada por usuários comuns
 
-## 3.4 Seed do checklist
+## 3.4 Seed mínimo
 
+- [ ] Área inicial `Dublin` criada
+- [ ] Store inicial `Dublin Airport` criada
+- [ ] Store code inicial `5292` criado
+- [ ] Seed limitado a starter area/store, checklist sections e audit questions
+- [ ] Futuras lojas não dependem de edição de seed files
 - [ ] Perguntas de Store Standards inseridas
 - [ ] Perguntas de Availability inseridas
 - [ ] Perguntas de Speed inseridas
@@ -238,9 +250,10 @@ feat: configure Supabase clients and environment
 
 - [ ] SQL revisado
 - [ ] Policies duplicadas removidas
-- [ ] Seed não duplica perguntas
+- [ ] Seed não duplica área, store, seções ou perguntas
 - [ ] Migration executa sem erro
 - [ ] Seed executa sem erro
+- [ ] Follow-up migration registrada se `stores_insert`/`stores_update` ainda forem admin-only
 - [ ] Teste de permissão realizado
 - [ ] Commit criado
 
@@ -504,8 +517,10 @@ feat: add area manager dashboard
 
 ## 9.1 Stores iniciais
 
-- [ ] Store inicial criada
-- [ ] Área atribuída à store
+- [ ] Área inicial `Dublin` disponível
+- [ ] Store inicial `Dublin Airport` disponível
+- [ ] Store code `5292` disponível
+- [ ] Área `Dublin` atribuída à store
 - [ ] Store ativa aparece nos selects
 
 ## 9.2 Admin stores
@@ -513,9 +528,20 @@ feat: add area manager dashboard
 - [ ] Rota `/admin/stores` criada
 - [ ] Lista de lojas criada
 - [ ] Formulário de criação criado
-- [ ] Campos `Name`, `Location`, `Area`, `Active` criados
+- [ ] Campos `Name`, `Code`, `Area`, `Active` criados
+- [ ] Admin pode criar stores em qualquer área
+- [ ] Admin pode atualizar stores em qualquer área
 
-## 9.3 Limpeza e consolidação
+## 9.3 Area Manager stores
+
+- [ ] Confirmar que follow-up migration permite `stores_insert` para `area_id = get_my_area_id()`
+- [ ] Confirmar que follow-up migration permite `stores_update` somente dentro de `get_my_area_id()`
+- [ ] Confirmar que Area Manager não consegue mover store para outra área
+- [ ] Area Manager pode criar stores somente na própria área
+- [ ] Area Manager pode atualizar stores somente na própria área
+- [ ] Area Manager não consegue criar ou atualizar áreas
+
+## 9.4 Limpeza e consolidação
 
 - [ ] Stores mockadas removidas
 - [ ] Selects usam dados reais
@@ -823,7 +849,7 @@ feat: add final report without AI
 
 - [ ] Audit carregada
 - [ ] Store carregada
-- [ ] Auditor carregado
+- [ ] Usuário que criou a auditoria carregado
 - [ ] Answers carregadas
 - [ ] Photo captions carregadas
 - [ ] Section scores carregados
@@ -882,10 +908,10 @@ feat: add AI action plan generation
 ## 17.2 Atualização de status
 
 - [ ] Admin pode atualizar status
-- [ ] Area Manager pode atualizar status se permitido
-- [ ] Store Manager pode atualizar status da própria loja se permitido
-- [ ] Leader apenas visualiza ou atualiza conforme regra definida
-- [ ] Auditor sem permissão não altera status
+- [ ] Area Manager apenas visualiza action plans em V1
+- [ ] Store Manager apenas visualiza action plans em V1 até existir RPC/server route de tracking
+- [ ] Leader apenas visualiza action plans
+- [ ] Usuário sem permissão não altera status
 
 ## 17.3 Página dedicada
 
@@ -1057,7 +1083,7 @@ feat: configure PWA installation
 
 ## 21.3 Limpeza e consolidação
 
-- [ ] Auditor não acessa users
+- [ ] Non-admin não acessa users
 - [ ] Queries revisadas
 - [ ] Lint executado
 - [ ] Typecheck executado
@@ -1120,12 +1146,18 @@ fix: improve mobile usability
 - [ ] Admin vê todas fotos
 - [ ] Admin acessa `/admin`
 - [ ] Admin gera IA para qualquer auditoria
+- [ ] Admin cria e atualiza todas as áreas
+- [ ] Admin cria e atualiza todas as lojas
 
 ## 23.2 Area Manager
 
 - [ ] Vê apenas lojas da área
 - [ ] Vê relatórios da área
 - [ ] Vê action plans da área
+- [ ] Cria lojas somente na área atribuída, após follow-up RLS
+- [ ] Atualiza lojas somente na área atribuída, após follow-up RLS
+- [ ] Não cria nem atualiza áreas
+- [ ] Não move stores para outra área
 - [ ] Não vê outras áreas
 
 ## 23.3 Store Manager
@@ -1133,12 +1165,14 @@ fix: improve mobile usability
 - [ ] Vê apenas a própria loja
 - [ ] Vê relatórios da própria loja
 - [ ] Vê action plans da própria loja
+- [ ] Não cria stores
 - [ ] Não vê outras lojas
 
 ## 23.4 Leader
 
 - [ ] Vê auditorias da própria loja
 - [ ] Pode comparar auditorias da própria loja
+- [ ] Não cria stores
 - [ ] Não vê outras lojas
 - [ ] Não acessa admin indevidamente
 
@@ -1170,19 +1204,22 @@ fix: harden security and RLS policies
 - [ ] Login como Leader
 - [ ] Ver dashboard da própria loja
 - [ ] Ver auditorias da própria loja
-- [ ] Criar nova auditoria
-- [ ] Preencher checklist
-- [ ] Adicionar foto
-- [ ] Finalizar auditoria
-- [ ] Gerar relatório
+- [ ] Comparar auditorias da própria loja para aprendizado
+- [ ] Confirmar que não consegue criar nova auditoria
+- [ ] Confirmar que não consegue editar checklist
+- [ ] Confirmar que não consegue adicionar foto
+- [ ] Confirmar que não consegue finalizar auditoria
+- [ ] Ver relatório existente
 - [ ] Exportar PDF
 
 ## 24.2 Fluxo Store Manager
 
 - [ ] Login como Store Manager
 - [ ] Ver dashboard da loja
+- [ ] Ver apenas a própria store
 - [ ] Ver relatórios da loja
 - [ ] Ver action plans da loja
+- [ ] Confirmar que não consegue criar stores
 - [ ] Não acessar outras lojas
 
 ## 24.3 Fluxo Area Manager
@@ -1190,6 +1227,10 @@ fix: harden security and RLS policies
 - [ ] Login como Area Manager
 - [ ] Ver dashboard da área
 - [ ] Ver lojas da área
+- [ ] Criar store na própria área após follow-up RLS
+- [ ] Atualizar store na própria área após follow-up RLS
+- [ ] Confirmar bloqueio ao tentar criar/atualizar store fora da própria área
+- [ ] Confirmar que não consegue criar áreas
 - [ ] Ver relatórios das lojas da área
 - [ ] Não acessar outra área
 
@@ -1199,6 +1240,8 @@ fix: harden security and RLS policies
 - [ ] Ver todas auditorias
 - [ ] Ver todos usuários
 - [ ] Ver todas lojas
+- [ ] Criar e atualizar áreas
+- [ ] Criar e atualizar stores
 - [ ] Gerar/regenerar IA
 - [ ] Exportar PDF
 

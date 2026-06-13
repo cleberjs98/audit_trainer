@@ -3,7 +3,7 @@
 > **Idioma da documentação:** Português  
 > **Idioma do aplicativo:** Inglês  
 > **Idioma dos relatórios:** Inglês  
-> **Tipo de app:** PWA mobile-first com login, Admin, Auditor, fotos, score, relatórios e IA integrada.
+> **Tipo de app:** PWA mobile-first com login, Admin, Area Manager, Store Manager, Leader, fotos, score, relatórios e IA integrada.
 
 ---
 
@@ -11,7 +11,7 @@
 
 **Store Audit Trainer** é um PWA mobile-first criado para ajudar líderes de loja a realizar auditorias internas de treinamento, coletar evidências com fotos, calcular pontuação de performance e gerar relatórios profissionais em inglês com plano de ação gerado por IA.
 
-O app deve simular uma visita no estilo **Mystery Shop**. O auditor anda pela loja, responde perguntas estruturadas, adiciona comentários, tira fotos e gera um relatório final.
+O app deve simular uma visita no estilo **Mystery Shop**. O usuário autorizado anda pela loja, responde perguntas estruturadas, adiciona comentários, tira fotos e gera um relatório final.
 
 O relatório final deve ajudar managers e líderes a treinar a equipe com ações claras, práticas e mensuráveis.
 
@@ -139,41 +139,52 @@ O app deve ter controle de acesso por função.
 O Admin pode:
 
 - Ver auditorias de todos os usuários
+- Ver e gerenciar todas as áreas
 - Ver todas as lojas
-- Ver todos os auditores
-- Criar e gerenciar lojas
+- Criar e gerenciar todas as lojas
 - Ver dashboard analítico
-- Filtrar auditorias por loja, data, auditor e score
+- Filtrar auditorias por loja, área, data, usuário e score
 - Abrir qualquer relatório final
 - Gerar ou regenerar planos de ação por IA
 - Exportar relatórios
 - Gerenciar usuários
 - Atribuir papéis aos usuários
 
-### 6.2 Auditor
+### 6.2 Area Manager
 
-O Auditor pode:
+O Area Manager pode:
 
-- Criar novas auditorias
-- Continuar auditorias incompletas
-- Adicionar notas e fotos
-- Finalizar auditorias
-- Gerar relatório com IA das próprias auditorias
-- Ver apenas as próprias auditorias
-- Exportar os próprios relatórios
+- Ver lojas, auditorias, relatórios e planos de ação da área atribuída
+- Criar novas lojas somente dentro da própria área
+- Atualizar lojas somente dentro da própria área
+- Não criar nem atualizar áreas
+- Não ver lojas ou auditorias de outras áreas
+- Não alterar auditorias finalizadas
 
-### 6.3 Manager — Papel Futuro
+### 6.3 Store Manager
 
-O papel de Manager pode ser adicionado depois.
+O Store Manager pode:
 
-O Manager poderá:
+- Ver apenas a própria loja
+- Criar, continuar e finalizar auditorias da própria loja
+- Adicionar notas e fotos em auditorias desbloqueadas da própria loja
+- Ver relatórios e planos de ação da própria loja
+- Não criar lojas
+- Não ver lojas ou auditorias de outras lojas
 
-- Ver auditorias da loja atribuída a ele
-- Acompanhar planos de ação
-- Marcar ações como concluídas
-- Comentar nos follow-ups
+### 6.4 Leader
 
-Esse papel não é obrigatório na primeira versão, mas o banco de dados deve estar preparado para adicioná-lo depois.
+O Leader pode:
+
+- Ver apenas a própria loja
+- Ver auditorias da própria loja para aprendizado e comparação
+- Ver relatórios e planos de ação da própria loja
+- Não criar lojas
+- Não editar auditorias, respostas, fotos ou planos de ação
+
+### Papéis oficiais
+
+Os únicos papéis válidos são `admin`, `area_manager`, `store_manager` e `leader`. Não existe papel `auditor` ou `manager` no V1.
 
 ---
 
@@ -189,7 +200,7 @@ Modelo recomendado:
 - Não deve haver cadastro público livre na primeira versão
 - Login com e-mail e senha
 - Recuperação de senha disponível
-- Todo usuário deve ter um perfil com role e, se necessário, loja atribuída
+- Todo usuário deve ter um perfil com role e escopo atribuído: área para `area_manager`, loja para `store_manager` e `leader`, sem área/loja para `admin`
 
 ---
 
@@ -203,24 +214,35 @@ Usar **Supabase Row Level Security**.
 
 ```txt
 Can read and manage all records.
+Can create and update all areas and stores.
 ```
 
-### Auditor
+### Area Manager
 
 ```txt
-Can create audits.
-Can read only their own audits.
-Can update only their own draft or in-progress audits.
+Can read stores, audits, reports and action plans inside their assigned area.
+Can create and update stores only inside their assigned area.
+Cannot create or update areas in V1.
+Cannot access other areas.
+```
+
+### Store Manager
+
+```txt
+Can read their own store only.
+Can create and manage unlocked audits for their own store.
+Cannot create stores.
+Cannot access other stores.
 Cannot edit completed audits unless reopened by Admin.
-Cannot see other users’ audits.
 ```
 
-### Manager
+### Leader
 
 ```txt
-Can read audits from assigned store only.
-Can update action plan status only.
-Cannot edit audit answers.
+Can read their own store only.
+Can read audits from their own store for learning and comparison.
+Cannot create stores.
+Cannot edit audits, answers, photos or action plans.
 ```
 
 ---
@@ -271,9 +293,9 @@ A tela de login deve ser limpa, profissional e direta.
 
 ---
 
-### 10.2 Auditor Dashboard
+### 10.2 Store Dashboard
 
-O dashboard do auditor deve mostrar:
+O dashboard da loja deve mostrar:
 
 - Botão **Start New Audit**
 - Auditorias em andamento
@@ -328,7 +350,7 @@ Campos:
 Store
 Visit Date
 Visit Time
-Auditor
+Audit Owner
 MOD / Manager on Duty
 Shift
 Traffic Level
@@ -417,7 +439,7 @@ Follow-up Actions
 
 O Admin pode abrir qualquer auditoria e visualizar:
 
-- Nome do auditor
+- Nome do usuário que criou a auditoria
 - Loja
 - Data
 - Horário
@@ -886,7 +908,7 @@ Store
 Location
 Date
 Time
-Auditor
+Audit Owner
 MOD / Manager on Duty
 Shift
 Traffic Level
@@ -951,10 +973,11 @@ As seções do PDF devem corresponder à tela de relatório final.
 Tabelas recomendadas no Supabase:
 
 ```txt
+areas
 profiles
 stores
 audits
-audit_sections
+checklist_sections
 audit_questions
 audit_answers
 audit_photos
@@ -981,8 +1004,9 @@ Roles:
 
 ```txt
 admin
-auditor
-manager
+area_manager
+store_manager
+leader
 ```
 
 ---
@@ -992,11 +1016,21 @@ manager
 ```txt
 id
 name
-location
-area
-active
+code
+area_id
+is_active
 created_at
 updated_at
+```
+
+Regras de gestão:
+
+```txt
+Admin can create and update all stores.
+Area Manager can create and update stores only inside their assigned area.
+Store Manager can only view their own store.
+Leader can only view their own store.
+Future stores should be created through the app, not by editing seed files.
 ```
 
 ---
@@ -1006,7 +1040,7 @@ updated_at
 ```txt
 id
 store_id
-auditor_id
+audited_by
 manager_name
 visit_date
 visit_time
@@ -1208,7 +1242,7 @@ Estas regras não podem ser quebradas:
 2. Reports must be generated in English.
 3. Users must log in.
 4. Admin must see all audits.
-5. Auditor must see only their own audits.
+5. Area Manager must see only stores and audits from their assigned area.
 6. Completed audits must be locked by default.
 7. Photos must be linked to specific audit questions.
 8. AI must not invent facts.
@@ -1217,6 +1251,8 @@ Estas regras não podem ser quebradas:
 11. The app must remain simple and fast.
 12. Scoring must be transparent and easy to understand.
 13. Final reports must be professional and training-focused.
+14. Store Manager and Leader must see only their own store.
+15. Future stores must be created through the app by Admin or Area Manager, not by editing seed files.
 ```
 
 ---
@@ -1228,7 +1264,9 @@ A primeira versão completa deve incluir:
 ```txt
 Login
 Admin role
-Auditor role
+Area Manager role
+Store Manager role
+Leader role
 Dashboard
 New audit
 Checklist
@@ -1239,6 +1277,8 @@ Audit review
 Final report
 AI action plan
 Admin audit view
+Admin store management
+Area Manager store management after the required RLS follow-up migration
 PDF export
 PWA installation
 ```
@@ -1250,7 +1290,6 @@ Offline sync
 Advanced charts
 AI image analysis
 Push notifications
-Manager role
 Checklist editor
 Multi-language support
 ```
@@ -1287,7 +1326,7 @@ Store Audit Trainer
 
 **Store Audit Trainer** é um PWA mobile-first para auditorias internas de loja e treinamento de equipe.
 
-Ele permite que auditores façam avaliações estruturadas da loja, capturem evidências com fotos, calculem scores e gerem relatórios profissionais em inglês com planos de ação criados por IA.
+Ele permite que usuários autorizados façam avaliações estruturadas da loja, capturem evidências com fotos, calculem scores e gerem relatórios profissionais em inglês com planos de ação criados por IA.
 
 O app deve ser simples o suficiente para ser usado durante uma caminhada real pela loja, mas estruturado o suficiente para que Admins acompanhem histórico, comparem performance e treinem equipes de forma eficiente.
 
@@ -1338,6 +1377,6 @@ Antes de criar código, o agente deve:
 6. Manter o app em inglês.
 7. Manter os relatórios em inglês.
 8. Proteger as chaves de API.
-9. Garantir permissões entre Admin e Auditor.
+9. Garantir permissões entre Admin, Area Manager, Store Manager e Leader.
 10. Testar cada fluxo antes de avançar.
 ```
