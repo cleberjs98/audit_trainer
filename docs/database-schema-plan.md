@@ -775,7 +775,7 @@ This design is conservative. It does not prevent the feature — it defers the i
 | `areas` | `name` | Minimal starter area only: `Dublin` |
 | `stores` | `code` | Minimal starter store only: `Dublin Airport` with store code `5292`, linked to `Dublin` |
 | `checklist_sections` | `slug` | 10 sections from app-bible.md (in English, in order) |
-| `audit_questions` | `question_key` | ~53 questions distributed across 10 sections; `is_critical = true` for Service & Customer Interaction and Scenario Question sections |
+| `audit_questions` | `question_key` | 62 questions distributed across 10 sections; `is_critical = true` for Service & Customer Interaction and Scenario Question sections |
 
 The admin user profile is **not seeded via SQL**. See below.
 
@@ -818,7 +818,7 @@ There is no `AFTER INSERT ON auth.users` trigger in V1. **The admin user and all
 - **area_manager RLS subquery cost:** `store_id IN (SELECT id FROM stores WHERE area_id = get_my_area_id())` runs on every row eval. The `stores(area_id)` B-tree index is mandatory for acceptable performance.
 - **profiles.email denormalization drift:** If a user changes their email in Supabase Auth, `profiles.email` becomes stale. No sync mechanism in V1. Acceptable but must be documented.
 - **`checklist_sections` trigger registration:** `handle_updated_at()` must be registered on `checklist_sections` explicitly. This was previously described as insert-only and may be missed in migration authoring.
-- **`data/defaultChecklist.ts` is an empty array:** Must be populated with the 10 sections and ~53 questions before Phase 3.4 seed execution.
+- **`data/defaultChecklist.ts` is an empty array:** Must be populated with the 10 sections and 62 questions before Phase 3.4 seed execution.
 - **ON DELETE RESTRICT for profiles.store_id/area_id:** Stores and areas with assigned profiles cannot be deleted. Admin must reassign or remove profiles first. Acceptable for V1 but may need a cascade or soft-delete strategy later.
 - **Area-manager store writes require follow-up migration if not in `001_initial_schema.sql`:** The current first migration may intentionally keep `stores_insert` and `stores_update` admin-only. Before building area-manager store management UI, add a follow-up migration that allows area_manager INSERT/UPDATE only where `area_id = get_my_area_id()` and prevents cross-area reassignment.
 - **store_manager progress tracking deferred:** Direct UPDATE on `action_plans` and `action_plan_items` is denied for non-admin in V1. A server-side RPC must be built before store managers can track action item completion.
