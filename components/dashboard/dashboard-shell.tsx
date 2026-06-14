@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 import { signOut } from '@/app/auth/actions'
 import { formatUserRole, type ProfileRow } from '@/lib/auth/profile'
 
@@ -12,6 +14,8 @@ type DashboardCard = {
   description: string
   action: string
   note: string
+  href?: string
+  disabled?: boolean
 }
 
 export type DashboardContext = {
@@ -56,8 +60,9 @@ function getDashboardCards(profile: ProfileRow): DashboardCard[] {
         profile.role === 'admin'
           ? 'Manage all stores and operational store details.'
           : 'Create and update stores inside your assigned area.',
-      action: 'Coming soon',
-      note: 'Placeholder',
+      action: 'Open Store Management',
+      note: 'Available',
+      href: '/store-management',
     })
   }
 
@@ -174,13 +179,22 @@ export function DashboardShell({
                 </p>
               </div>
 
-              <button
-                type="button"
-                disabled
-                className="mt-6 min-h-11 w-full rounded-lg border border-border bg-background px-4 text-sm font-semibold text-muted"
-              >
-                {card.action}
-              </button>
+              {card.href ? (
+                <Link
+                  href={card.href}
+                  className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  {card.action}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  disabled={card.disabled ?? true}
+                  className="mt-6 min-h-11 w-full rounded-lg border border-border bg-background px-4 text-sm font-semibold text-muted"
+                >
+                  {card.action}
+                </button>
+              )}
             </article>
           ))}
         </section>
