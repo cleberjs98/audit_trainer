@@ -4,6 +4,7 @@ import { formatUserRole, type ProfileRow } from '@/lib/auth/profile'
 type DashboardShellProps = {
   email: string
   profile: ProfileRow
+  context: DashboardContext
 }
 
 type DashboardCard = {
@@ -13,25 +14,9 @@ type DashboardCard = {
   note: string
 }
 
-function getContextLabel(profile: ProfileRow) {
-  if (profile.role === 'admin') {
-    return {
-      label: 'Workspace context',
-      value: 'All stores and areas',
-    }
-  }
-
-  if (profile.role === 'area_manager') {
-    return {
-      label: 'Assigned area',
-      value: profile.area_id ?? 'Not assigned',
-    }
-  }
-
-  return {
-    label: 'Assigned store',
-    value: profile.store_id ?? 'Not assigned',
-  }
+export type DashboardContext = {
+  label: string
+  value: string
 }
 
 function getDashboardCards(profile: ProfileRow): DashboardCard[] {
@@ -79,8 +64,11 @@ function getDashboardCards(profile: ProfileRow): DashboardCard[] {
   return cards
 }
 
-export function DashboardShell({ email, profile }: DashboardShellProps) {
-  const context = getContextLabel(profile)
+export function DashboardShell({
+  email,
+  profile,
+  context,
+}: DashboardShellProps) {
   const cards = getDashboardCards(profile)
   const roleLabel = formatUserRole(profile.role)
 
