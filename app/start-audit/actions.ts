@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 
 import { isUserRole, type ProfileRow } from '@/lib/auth/profile'
 import { createClient } from '@/lib/supabase/server'
@@ -227,11 +228,7 @@ export async function startAuditAction(
 
   revalidatePath('/dashboard')
   revalidatePath('/start-audit')
+  revalidatePath(`/audits/${audit.id}`)
 
-  return {
-    status: 'success',
-    message: 'Audit draft created successfully.',
-    auditId: audit.id,
-  }
+  redirect(`/audits/${audit.id}`)
 }
-
