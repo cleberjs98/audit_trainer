@@ -33,6 +33,11 @@ Ao final de cada fase, confirmar sempre:
 [ ] Commit criado
 ```
 
+## Registro de limitações V1
+
+- [ ] Antes de implementar Audit History, Review / Complete, Photos, AI, PDF, Action Plans, User / Role Assignment ou Analytics, revisar `docs/v1-limitations-and-upgrades.md`
+- [ ] Após o core flow estabilizar, limpar drift documentado e remover linguagem antiga de leader read-only, auditor e manager dos documentos legados
+
 ---
 
 # FASE 0 — Preparação
