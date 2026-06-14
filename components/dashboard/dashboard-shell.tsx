@@ -42,8 +42,9 @@ function getDashboardCards(profile: ProfileRow): DashboardCard[] {
       title: 'View Audit History',
       description:
         'Review completed and in-progress audits available to your role.',
-      action: 'Coming soon',
-      note: 'Placeholder',
+      action: 'View Audit History',
+      note: 'Available',
+      href: '/audits',
     },
     {
       title: 'Action Plans',

@@ -35,7 +35,7 @@ Ao final de cada fase, confirmar sempre:
 
 ## Registro de limitações V1
 
-- [ ] Antes de implementar Audit History, Review / Complete, Photos, AI, PDF, Action Plans, User / Role Assignment ou Analytics, revisar `docs/v1-limitations-and-upgrades.md`
+- [ ] Audit History V1 implementado; antes de implementar Review / Complete, Photos, AI, PDF, Action Plans, User / Role Assignment ou Analytics, revisar `docs/v1-limitations-and-upgrades.md`
 - [ ] Após o core flow estabilizar, limpar drift documentado e remover linguagem antiga de leader read-only, auditor e manager dos documentos legados
 
 ---

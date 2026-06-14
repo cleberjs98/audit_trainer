@@ -21,8 +21,9 @@ This document records which parts are deliberately simple for V1, why that is ac
 - `/dashboard` is protected server-side.
 - The dashboard shows the Audit Trainer shell, signed-in email, role, and friendly store/area context.
 - The Start New Audit card links to `/start-audit`.
+- The View Audit History card links to `/audits`.
 - Store Management is visible only to `admin` and `area_manager`.
-- Audit History and Action Plans are placeholders.
+- Action Plans is still a placeholder.
 
 ### Store Management V1
 
@@ -52,6 +53,22 @@ This document records which parts are deliberately simple for V1, why that is ac
 - Completed or locked audits render read-only in the normal UI.
 - Score preview is calculated in the app from loaded answers and is not persisted to `audits`.
 - Answer snapshots and `max_score` are trusted from the database on the server side.
+
+### Audit History V1
+
+- `/audits` is implemented.
+- The page is protected server-side and uses the normal Supabase server client.
+- Audit visibility is role-scoped through RLS:
+  - Admin sees audits for all stores.
+  - Area managers see audits for stores in their assigned area.
+  - Store managers see audits for their assigned store, including audits created by leaders from the same store.
+  - Leaders see audits for their assigned store.
+- The page includes a status filter for `draft`, `in_progress`, `completed`, and `archived`.
+- Invalid status filters are ignored and treated as all statuses.
+- Each row links to `/audits/[auditId]`.
+- Store name, store code, area name, and creator display are shown when available through RLS.
+- Score display uses persisted `audits.total_score`, `audits.max_score`, and `audits.percentage`; when no persisted score exists, it shows "Not finalized".
+- The page is list/navigation only.
 
 ### RLS Migrations 004 and 005
 
@@ -127,8 +144,18 @@ The current action writes `is_critical_flag = false` because there is no critica
 
 ### Audit History
 
-- Audit History is not implemented yet.
-- Planned Audit History V1 should include a role-scoped list, status filter, and links to audit detail.
+- Audit History V1 is implemented.
+- Current V1 behavior:
+  - Role-scoped audit list through RLS.
+  - Status filter.
+  - Links to `/audits/[auditId]`.
+  - Store name, store code, and area display when available.
+  - Creator display when available through RLS.
+  - Persisted score only; otherwise "Not finalized".
+  - No destructive actions.
+  - No complete or final submit behavior.
+  - No answer editing on the list page.
+  - No photos, AI report, PDF, action plan, analytics, or advanced comparison.
 - Advanced analytics and comparison dashboards should come later.
 
 ### Scoring
@@ -183,15 +210,14 @@ These should be updated after the new V1 role model is stable across Audit Histo
 
 ## 5. Recommended Next Implementation Order
 
-1. Audit History V1
-2. Review / Complete Audit with persisted final score and lock
-3. Update docs to remove old leader read-only wording
-4. Photo upload V1
-5. AI report generation
-6. PDF export
-7. Action plan generation
-8. User / Role Assignment
-9. Analytics and comparison dashboards
+1. Review / Complete Audit with persisted final score and lock
+2. Update docs to remove old leader read-only wording
+3. Photo upload V1
+4. AI report generation
+5. PDF export
+6. Action plan generation
+7. User / Role Assignment
+8. Analytics and comparison dashboards
 
 ## 6. Security Notes
 
