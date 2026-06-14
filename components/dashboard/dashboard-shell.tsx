@@ -32,10 +32,11 @@ function getDashboardCards(profile: ProfileRow): DashboardCard[] {
     {
       title: 'Start New Audit',
       description: isLeader
-        ? 'Leaders can review completed audits for learning and comparison.'
-        : 'Create a new training audit when the audit flow is ready.',
-      action: isLeader ? 'Read-only role' : 'Coming soon',
-      note: 'Placeholder',
+        ? 'Start a training audit for your assigned store.'
+        : 'Create a new draft training audit for an active store.',
+      action: 'Start Audit',
+      note: 'Available',
+      href: '/start-audit',
     },
     {
       title: 'View Audit History',
@@ -155,8 +156,8 @@ export function DashboardShell({
             </p>
             <p className="mt-2 text-sm leading-6 text-muted">
               Leader access is designed for learning from existing store audits,
-              reports, and action plans. Editing workflows stay unavailable for
-              this role.
+              reports, and action plans. Leaders can also start audits for
+              their assigned store when training needs to be captured.
             </p>
           </section>
         ) : null}
