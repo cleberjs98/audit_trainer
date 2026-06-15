@@ -1,4 +1,5 @@
 export type AuditStatus = 'draft' | 'in_progress' | 'completed' | 'archived'
+export type AuditScoreBand = 'excellent' | 'good' | 'needs_focus' | 'critical'
 
 export type ChecklistStore = {
   id: string
@@ -21,6 +22,8 @@ export type ChecklistAudit = {
   totalScore: number
   maxScore: number
   percentage: number
+  scoreBand: AuditScoreBand | null
+  completedAt: string | null
   store: ChecklistStore
 }
 

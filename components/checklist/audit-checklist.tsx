@@ -4,8 +4,11 @@ import Link from 'next/link'
 import { useActionState, useMemo, useState } from 'react'
 
 import {
+  completeAuditAction,
+  initialCompleteAuditState,
   initialSaveAnswerState,
   saveAuditAnswerAction,
+  type CompleteAuditState,
   type SaveAnswerState,
 } from '@/app/audits/[auditId]/actions'
 import type {
@@ -35,8 +38,35 @@ function formatVisitType(value: string) {
     .join(' ')
 }
 
+function formatScoreBand(value: string | null) {
+  if (!value) {
+    return 'Not finalized'
+  }
+
+  if (value === 'excellent') {
+    return 'Excellent / Bonus Standard'
+  }
+
+  return value
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 function formatTime(value: string) {
   return value.slice(0, 5)
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return 'Not available'
+  }
+
+  return new Intl.DateTimeFormat('en-IE', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Europe/Dublin',
+  }).format(new Date(value))
 }
 
 function scoreLabel(preview: ScorePreview) {
@@ -47,7 +77,19 @@ function scoreLabel(preview: ScorePreview) {
   return `${preview.totalScore}/${preview.maxScore} - ${preview.percentage}%`
 }
 
-function StatusMessage({ state }: { state: SaveAnswerState }) {
+function persistedScoreLabel(audit: ChecklistAudit) {
+  if (audit.maxScore <= 0) {
+    return 'Not finalized'
+  }
+
+  return `${audit.totalScore}/${audit.maxScore} - ${audit.percentage}%`
+}
+
+function StatusMessage({
+  state,
+}: {
+  state: SaveAnswerState | CompleteAuditState
+}) {
   if (!state.message) {
     return null
   }
@@ -64,6 +106,95 @@ function StatusMessage({ state }: { state: SaveAnswerState }) {
     >
       {state.message}
     </p>
+  )
+}
+
+function ReviewCompleteCard({
+  audit,
+  readOnly,
+}: {
+  audit: ChecklistAudit
+  readOnly: boolean
+}) {
+  const [state, formAction, isPending] = useActionState(
+    completeAuditAction,
+    initialCompleteAuditState
+  )
+  const [confirmed, setConfirmed] = useState(false)
+  const canComplete =
+    !readOnly && (audit.status === 'draft' || audit.status === 'in_progress')
+
+  return (
+    <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-primary">
+            Review & Complete
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold text-foreground">
+            Finish this audit when the checklist is ready.
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
+            Completion calculates the final score through the secure database
+            RPC, locks the audit, and makes completed audits read-only in the
+            normal app flow. Unanswered required questions will block
+            completion.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-border bg-background p-4 lg:min-w-72">
+          <p className="text-xs font-semibold text-muted">Persisted score</p>
+          <p className="mt-1 text-lg font-semibold text-foreground">
+            {persistedScoreLabel(audit)}
+          </p>
+          <p className="mt-2 text-xs font-semibold text-muted">Rating</p>
+          <p className="mt-1 text-sm font-semibold text-foreground">
+            {formatScoreBand(audit.scoreBand)}
+          </p>
+          {audit.completedAt ? (
+            <>
+              <p className="mt-2 text-xs font-semibold text-muted">
+                Completed
+              </p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
+                {formatDateTime(audit.completedAt)}
+              </p>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      {canComplete ? (
+        <form action={formAction} className="mt-5 flex flex-col gap-4">
+          <input type="hidden" name="audit_id" value={audit.id} />
+
+          <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-medium leading-6 text-amber-900">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              onChange={(event) => setConfirmed(event.currentTarget.checked)}
+              className="mt-1 size-4 accent-primary"
+            />
+            I understand this will calculate the final score and lock the
+            audit.
+          </label>
+
+          <StatusMessage state={state} />
+
+          <button
+            type="submit"
+            disabled={!confirmed || isPending}
+            className="min-h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-muted"
+          >
+            {isPending ? 'Completing...' : 'Complete audit'}
+          </button>
+        </form>
+      ) : (
+        <div className="mt-5 rounded-lg border border-border bg-background px-3 py-3 text-sm font-medium text-muted">
+          This audit is completed or locked. Completion actions are unavailable.
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -273,9 +404,13 @@ export function AuditChecklist({
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-background p-3">
-                <p className="text-xs font-semibold text-muted">Score preview</p>
+                <p className="text-xs font-semibold text-muted">
+                  {audit.maxScore > 0 ? 'Final score' : 'Score preview'}
+                </p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
-                  {scoreLabel(scorePreview)}
+                  {audit.maxScore > 0
+                    ? persistedScoreLabel(audit)
+                    : scoreLabel(scorePreview)}
                 </p>
               </div>
             </div>
@@ -306,12 +441,16 @@ export function AuditChecklist({
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
-            <p className="text-sm font-medium text-muted">Preview only</p>
+            <p className="text-sm font-medium text-muted">
+              {audit.maxScore > 0 ? 'Final rating' : 'Preview only'}
+            </p>
             <p className="mt-2 text-xl font-semibold text-foreground">
-              Not persisted
+              {audit.maxScore > 0 ? formatScoreBand(audit.scoreBand) : 'Not persisted'}
             </p>
           </div>
         </section>
+
+        <ReviewCompleteCard audit={audit} readOnly={readOnly} />
 
         <nav
           aria-label="Checklist sections"

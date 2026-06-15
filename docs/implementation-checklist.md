@@ -35,7 +35,7 @@ Ao final de cada fase, confirmar sempre:
 
 ## Registro de limitações V1
 
-- [ ] Audit History V1 implementado; antes de implementar Review / Complete, Photos, AI, PDF, Action Plans, User / Role Assignment ou Analytics, revisar `docs/v1-limitations-and-upgrades.md`
+- [ ] Audit History V1 and Review / Complete Audit V1 implementados; antes de implementar Photos, AI, PDF, Action Plans, User / Role Assignment ou Analytics, revisar `docs/v1-limitations-and-upgrades.md`
 - [ ] Após o core flow estabilizar, limpar drift documentado e remover linguagem antiga de leader read-only, auditor e manager dos documentos legados
 
 ---
@@ -767,21 +767,21 @@ feat: add photo upload for audit answers
 
 ## 14.1 Review Screen
 
-- [ ] Rota `/audits/[id]/review` criada
-- [ ] Audit Summary criado
-- [ ] Score Overview criado
-- [ ] Section Breakdown criado
+- [x] Review integrado em `/audits/[auditId]` para V1
+- [x] Audit Summary criado
+- [x] Score Overview criado
+- [ ] Section Breakdown detalhado permanece futuro
 - [ ] Missing Required Questions criado
 - [ ] Critical Issues criado
 - [ ] Photos Attached criado
 
 ## 14.2 Complete Audit
 
-- [ ] Botão `Complete Audit` criado
-- [ ] Score recalculado ao completar
-- [ ] Status muda para `Completed`
-- [ ] `completed_at` salvo
-- [ ] Auditoria bloqueia edição
+- [x] Botão `Complete Audit` criado
+- [x] Score recalculado pelo RPC ao completar
+- [x] Status muda para `Completed`
+- [x] `completed_at` salvo pelo trigger
+- [x] Auditoria bloqueia edição
 
 ## 14.3 Validação visual necessária
 
@@ -1210,10 +1210,12 @@ fix: harden security and RLS policies
 - [ ] Ver dashboard da própria loja
 - [ ] Ver auditorias da própria loja
 - [ ] Comparar auditorias da própria loja para aprendizado
-- [ ] Confirmar que não consegue criar nova auditoria
-- [ ] Confirmar que não consegue editar checklist
+- [ ] Confirmar que consegue criar auditoria para a loja atribuída
+- [ ] Confirmar que consegue editar auditorias `draft`/`in_progress` da loja atribuída
 - [ ] Confirmar que não consegue adicionar foto
-- [ ] Confirmar que não consegue finalizar auditoria
+- [ ] Confirmar que consegue finalizar auditorias desbloqueadas `draft`/`in_progress` da loja atribuída
+- [ ] Confirmar que não acessa auditorias de outras lojas
+- [ ] Confirmar que auditorias `completed`/locked ficam read-only
 - [ ] Ver relatório existente
 - [ ] Exportar PDF
 

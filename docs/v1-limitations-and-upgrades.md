@@ -51,8 +51,20 @@ This document records which parts are deliberately simple for V1, why that is ac
 - Existing answers are loaded only for the current audit.
 - Users can save checklist answers for unlocked `draft` or `in_progress` audits inside their role scope.
 - Completed or locked audits render read-only in the normal UI.
-- Score preview is calculated in the app from loaded answers and is not persisted to `audits`.
+- Score preview is calculated in the app from loaded answers before completion.
+- Completed audits show the persisted final score from `audits`.
 - Answer snapshots and `max_score` are trusted from the database on the server side.
+
+### Review / Complete Audit V1
+
+- Completion is implemented from `/audits/[auditId]`.
+- The app calls `public.complete_audit_v1(p_audit_id uuid)` through the normal authenticated Supabase server client.
+- The server action re-checks auth, profile, role, audit access, status, and lock state before calling the RPC.
+- The RPC calculates and persists `total_score`, `max_score`, `percentage`, `score_band`, and `section_scores` from DB-trusted checklist and answer rows.
+- The existing database trigger sets `is_locked = true` and `completed_at` when status changes to `completed`.
+- Completed audits become read-only in the normal UI.
+- No score payload, score band, section scores, status, lock state, role, or store scope is trusted from the client.
+- No photos, AI report, PDF, action plan, or reopen flow is implemented in this phase.
 
 ### Audit History V1
 
@@ -77,6 +89,7 @@ This document records which parts are deliberately simple for V1, why that is ac
 - Migration 005 enables Checklist V1 audit update and `audit_answers` insert/update policies.
 - Migration 005 keeps non-admin edits scoped to unlocked `draft` or `in_progress` audits.
 - Migration 005 allows leaders to save answers for their assigned store, matching the current V1 business rule.
+- Migration 006 adds the focused `complete_audit_v1` RPC for Review / Complete Audit V1.
 
 ## 3. Intentional V1 Limitations
 
@@ -118,15 +131,13 @@ This is safe because audit creation is role-scoped server-side and RLS remains t
 
 - Saves answers only.
 - Score preview is calculated in app memory from loaded answers.
-- Total score, max score, percentage, and score band are not persisted to `audits` yet.
-- No final submit or complete audit flow yet.
+- Total score, max score, percentage, score band, and section scores are persisted only when the user completes the audit through the Review & Complete card.
 - No photos.
 - No critical flag UI yet.
 - No AI summary.
 - No PDF export.
 - No action plan.
-- No audit history dashboard yet.
-- N/A support exists in the current checklist flow, but final score logic still needs review.
+- N/A support exists in the current checklist flow and the completion RPC excludes N/A answers from numerator and denominator.
 - Notes are simple text.
 - Answer snapshots are trusted from the database and written server-side.
 
@@ -160,25 +171,25 @@ The current action writes `is_critical_flag = false` because there is no critica
 
 ### Scoring
 
-- Current scoring is preview only.
-- Final persisted scoring is deferred to Review / Complete Audit.
+- Current draft/in-progress scoring is preview only.
+- Final persisted scoring is implemented by `complete_audit_v1` when the audit is completed.
 - Score bands to use:
   - 95-100%: Excellent / Bonus Standard
   - 85-94%: Good
   - 70-84%: Needs Focus
   - <70%: Critical Training Required
-- Final rules are still needed for:
-  - How N/A affects final max score.
+- Remaining future scoring decisions:
   - Which questions are informational or non-scored.
   - Which product feedback questions count toward final score.
   - Whether decimal scores are allowed.
+  - Whether comments should be required for low scores.
 
 ### Completed / Locked Audits
 
 - Completed and locked audits are read-only in the normal UI.
-- The final completion flow is not implemented yet.
+- The final completion flow is implemented from `/audits/[auditId]`.
 - Admin RLS may be broader as a break-glass capability, but app pages and server actions should enforce normal UI rules.
-- The future completion flow must validate required answers, calculate final persisted score, set completion fields, and rely on the existing lock trigger.
+- Completion validates required answers, calculates final persisted score, sets completion fields through the RPC, and relies on the existing lock trigger.
 
 ### Photos
 
@@ -206,18 +217,17 @@ Some older documents still describe an earlier role model or earlier route plan.
 - `docs/implementation-checklist.md` contains old leader test items that say leaders cannot create or edit checklist data.
 - `docs/database-schema-plan.md` still includes older leader read-only statements in places, while migrations 004 and 005 implement the newer Start Audit and Checklist V1 role model.
 
-These should be updated after the new V1 role model is stable across Audit History and Review / Complete Audit.
+These should be updated after the new V1 role model is stable across the completed core audit flow.
 
 ## 5. Recommended Next Implementation Order
 
-1. Review / Complete Audit with persisted final score and lock
-2. Update docs to remove old leader read-only wording
-3. Photo upload V1
-4. AI report generation
-5. PDF export
-6. Action plan generation
-7. User / Role Assignment
-8. Analytics and comparison dashboards
+1. Update docs to remove old leader read-only wording
+2. Photo upload V1
+3. AI report generation
+4. PDF export
+5. Action plan generation
+6. User / Role Assignment
+7. Analytics and comparison dashboards
 
 ## 6. Security Notes
 
@@ -235,7 +245,6 @@ These should be updated after the new V1 role model is stable across Audit Histo
 
 - Should leaders edit all draft/in_progress audits in their store or only audits they created?
 - Should decimal scores be allowed?
-- How should N/A affect final max score?
 - Which questions are informational/non-scored?
 - Which product feedback questions should count toward final score?
 - When should critical flag be enabled?

@@ -24,9 +24,11 @@ type AuditRow = {
   shift_type: string
   traffic_level: string
   visit_type: string
-  total_score: number
-  max_score: number
-  percentage: number
+  total_score: number | string
+  max_score: number | string
+  percentage: number | string
+  score_band: ChecklistAudit['scoreBand']
+  completed_at: string | null
 }
 
 type StoreRow = {
@@ -88,6 +90,8 @@ function toChecklistAudit(audit: AuditRow, store: StoreRow): ChecklistAudit {
     totalScore: toNumber(audit.total_score),
     maxScore: toNumber(audit.max_score),
     percentage: toNumber(audit.percentage),
+    scoreBand: audit.score_band,
+    completedAt: audit.completed_at,
     store: {
       id: store.id,
       name: store.name,
@@ -219,7 +223,7 @@ export default async function AuditDetailPage({
   const { data: audit, error: auditError } = await supabase
     .from('audits')
     .select(
-      'id, store_id, status, is_locked, visit_date, visit_time, mod, shift_type, traffic_level, visit_type, total_score, max_score, percentage'
+      'id, store_id, status, is_locked, visit_date, visit_time, mod, shift_type, traffic_level, visit_type, total_score, max_score, percentage, score_band, completed_at'
     )
     .eq('id', auditId)
     .single<AuditRow>()

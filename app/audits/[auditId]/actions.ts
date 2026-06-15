@@ -10,7 +10,17 @@ export type SaveAnswerState = {
   message: string
 }
 
+export type CompleteAuditState = {
+  status: 'idle' | 'success' | 'error'
+  message: string
+}
+
 export const initialSaveAnswerState: SaveAnswerState = {
+  status: 'idle',
+  message: '',
+}
+
+export const initialCompleteAuditState: CompleteAuditState = {
   status: 'idle',
   message: '',
 }
@@ -52,14 +62,16 @@ type SaveAnswerAccess =
       error: string
     }
 
-async function getSaveAnswerAccess(): Promise<SaveAnswerAccess> {
+async function getSaveAnswerAccess(
+  signedOutMessage = 'You must be signed in to save answers.'
+): Promise<SaveAnswerAccess> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return { ok: false, error: 'You must be signed in to save answers.' }
+    return { ok: false, error: signedOutMessage }
   }
 
   const { data: profile, error } = await supabase
@@ -148,6 +160,44 @@ function answerWriteErrorMessage(error: { code?: string; message?: string }) {
   }
 
   return 'Could not save this answer. Check the details and try again.'
+}
+
+function completionErrorMessage(error: { code?: string; message?: string }) {
+  const message = error.message?.toLowerCase() ?? ''
+
+  if (
+    error.code === '42501' ||
+    message.includes('access denied') ||
+    message.includes('permission')
+  ) {
+    return 'You do not have permission to complete this audit.'
+  }
+
+  if (message.includes('required questions missing answers')) {
+    return 'Please complete all required questions before finishing the audit.'
+  }
+
+  if (message.includes('invalid answer score')) {
+    return 'One or more answers has an invalid score. Review the checklist and try again.'
+  }
+
+  if (
+    message.includes('already locked') ||
+    message.includes('completed') ||
+    message.includes('locked')
+  ) {
+    return 'This audit is already locked or completed.'
+  }
+
+  if (message.includes('no scorable answers')) {
+    return 'Add at least one scored answer before completing the audit.'
+  }
+
+  if (message.includes('authentication required')) {
+    return 'You must be signed in to complete this audit.'
+  }
+
+  return 'Could not complete this audit. Review the checklist and try again.'
 }
 
 export async function saveAuditAnswerAction(
@@ -263,5 +313,75 @@ export async function saveAuditAnswerAction(
   return {
     status: 'success',
     message: 'Answer saved.',
+  }
+}
+
+export async function completeAuditAction(
+  _previousState: CompleteAuditState,
+  formData: FormData
+): Promise<CompleteAuditState> {
+  const access = await getSaveAnswerAccess(
+    'You must be signed in to complete this audit.'
+  )
+
+  if (!access.ok) {
+    return { status: 'error', message: access.error }
+  }
+
+  const auditId = getText(formData, 'audit_id')
+
+  if (!auditId) {
+    return {
+      status: 'error',
+      message: 'Audit not found or access denied.',
+    }
+  }
+
+  const { data: audit, error: auditError } = await access.supabase
+    .from('audits')
+    .select('id, store_id, status, is_locked')
+    .eq('id', auditId)
+    .single<AuditAccessRow>()
+
+  if (auditError || !audit) {
+    return {
+      status: 'error',
+      message: 'Audit not found or access denied.',
+    }
+  }
+
+  const canAccess = await canAccessAudit(access.supabase, access.profile, audit)
+
+  if (!canAccess) {
+    return {
+      status: 'error',
+      message: 'You do not have permission to complete this audit.',
+    }
+  }
+
+  if (!isEditableAudit(audit.status, audit.is_locked)) {
+    return {
+      status: 'error',
+      message: 'This audit is already locked or completed.',
+    }
+  }
+
+  const { error } = await access.supabase.rpc('complete_audit_v1', {
+    p_audit_id: audit.id,
+  })
+
+  if (error) {
+    return {
+      status: 'error',
+      message: completionErrorMessage(error),
+    }
+  }
+
+  revalidatePath(`/audits/${audit.id}`)
+  revalidatePath('/audits')
+
+  return {
+    status: 'success',
+    message: 'Audit completed and locked.',
   }
 }
