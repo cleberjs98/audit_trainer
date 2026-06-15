@@ -3,19 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
+import type { StartAuditState } from '@/components/audit/types'
 import { isUserRole, type ProfileRow } from '@/lib/auth/profile'
 import { createClient } from '@/lib/supabase/server'
-
-export type StartAuditState = {
-  status: 'idle' | 'success' | 'error'
-  message: string
-  auditId?: string
-}
-
-export const initialStartAuditState: StartAuditState = {
-  status: 'idle',
-  message: '',
-}
 
 const SHIFT_TYPES = ['morning', 'afternoon', 'evening'] as const
 const TRAFFIC_LEVELS = ['low', 'medium', 'high'] as const
@@ -70,7 +60,12 @@ async function getStartAuditAccess(): Promise<StartAuditAccess> {
     }
   }
 
-  return { ok: true, supabase, profile, userId: user.id }
+  return {
+    ok: true,
+    supabase,
+    profile,
+    userId: user.id,
+  }
 }
 
 function getText(formData: FormData, key: string) {

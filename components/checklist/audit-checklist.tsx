@@ -5,17 +5,17 @@ import { useActionState, useMemo, useState } from 'react'
 
 import {
   completeAuditAction,
-  initialCompleteAuditState,
-  initialSaveAnswerState,
   saveAuditAnswerAction,
-  type CompleteAuditState,
-  type SaveAnswerState,
 } from '@/app/audits/[auditId]/actions'
-import type {
+import {
   ChecklistAudit,
   ChecklistQuestion,
   ChecklistSection,
+  initialCompleteAuditState,
+  initialSaveAnswerState,
   ScorePreview,
+  type CompleteAuditState,
+  type SaveAnswerState,
 } from '@/components/checklist/types'
 
 type AuditChecklistProps = {

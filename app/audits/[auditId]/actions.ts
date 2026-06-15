@@ -2,28 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 
+import type {
+  CompleteAuditState,
+  SaveAnswerState,
+} from '@/components/checklist/types'
 import { isUserRole, type ProfileRow } from '@/lib/auth/profile'
 import { createClient } from '@/lib/supabase/server'
-
-export type SaveAnswerState = {
-  status: 'idle' | 'success' | 'error'
-  message: string
-}
-
-export type CompleteAuditState = {
-  status: 'idle' | 'success' | 'error'
-  message: string
-}
-
-export const initialSaveAnswerState: SaveAnswerState = {
-  status: 'idle',
-  message: '',
-}
-
-export const initialCompleteAuditState: CompleteAuditState = {
-  status: 'idle',
-  message: '',
-}
 
 type AuditAccessRow = {
   id: string

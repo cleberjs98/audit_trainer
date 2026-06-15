@@ -3,16 +3,14 @@
 import Link from 'next/link'
 import { useActionState } from 'react'
 
+import { startAuditAction } from '@/app/start-audit/actions'
 import {
   initialStartAuditState,
-  startAuditAction,
   type StartAuditState,
-} from '@/app/start-audit/actions'
-import { formatUserRole } from '@/lib/auth/profile'
-import type {
   StartAuditProfile,
   StartAuditStoreOption,
 } from '@/components/audit/types'
+import { formatUserRole } from '@/lib/auth/profile'
 
 type StartAuditFormProps = {
   profile: StartAuditProfile
@@ -261,4 +259,3 @@ export function StartAuditForm({
     </form>
   )
 }
-

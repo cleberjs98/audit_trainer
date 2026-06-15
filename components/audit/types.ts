@@ -13,3 +13,13 @@ export type StartAuditProfile = {
   storeId: string | null
 }
 
+export type StartAuditState = {
+  status: 'idle' | 'success' | 'error'
+  message: string
+  auditId?: string
+}
+
+export const initialStartAuditState: StartAuditState = {
+  status: 'idle',
+  message: '',
+}

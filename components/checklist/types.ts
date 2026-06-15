@@ -64,3 +64,23 @@ export type ScorePreview = {
   percentage: number | null
   answeredCount: number
 }
+
+export type SaveAnswerState = {
+  status: 'idle' | 'success' | 'error'
+  message: string
+}
+
+export type CompleteAuditState = {
+  status: 'idle' | 'success' | 'error'
+  message: string
+}
+
+export const initialSaveAnswerState: SaveAnswerState = {
+  status: 'idle',
+  message: '',
+}
+
+export const initialCompleteAuditState: CompleteAuditState = {
+  status: 'idle',
+  message: '',
+}
