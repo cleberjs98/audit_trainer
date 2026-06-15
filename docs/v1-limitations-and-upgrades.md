@@ -176,6 +176,7 @@ The current action writes `is_critical_flag = false` because there is no critica
 - The real Pret Customer Experience checklist mapping is now documented in `docs/pret-customer-experience-checklist.md`.
 - The current 62-question seed is deprecated for the real Pret-style model.
 - The next scoring model should use 19 core questions worth 95 points plus 1 Outstanding Card bonus question worth 5 points.
+- App V1 uses normalized 5-point scoring for all 19 core questions, including rows that appear as 3-point or 2-point questions in the source report.
 - The real report's Information Only fields will not be included in the app V1 checklist.
 - Score bands to use:
   - 95-100%: Excellent / Bonus Standard

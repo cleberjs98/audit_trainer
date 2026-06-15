@@ -69,17 +69,32 @@ function formatDateTime(value: string | null) {
   }).format(new Date(value))
 }
 
+function toNumber(value: number | string | null | undefined) {
+  if (value === null || value === undefined) {
+    return 0
+  }
+
+  return Number(value)
+}
+
 function scoreLabel(preview: ScorePreview) {
-  if (preview.maxScore === 0 || preview.percentage === null) {
+  if (preview.coreMaxScore === 0 || preview.percentage === null) {
     return 'No scored answers yet'
   }
 
-  return `${preview.totalScore}/${preview.maxScore} - ${preview.percentage}%`
+  return preview.combinedLabel
 }
 
 function persistedScoreLabel(audit: ChecklistAudit) {
   if (audit.maxScore <= 0) {
     return 'Not finalized'
+  }
+
+  if (audit.scoringModelVersion === 'pret_ce_v1') {
+    const bonusScore = toNumber(audit.sectionScores?.bonus?.total_score)
+    const bonusMaxScore = toNumber(audit.sectionScores?.bonus?.max_score) || 5
+
+    return `${audit.totalScore}/${audit.maxScore} + ${bonusScore}/${bonusMaxScore} bonus`
   }
 
   return `${audit.totalScore}/${audit.maxScore} - ${audit.percentage}%`
@@ -213,6 +228,15 @@ function QuestionCard({
   )
   const [isNa, setIsNa] = useState(question.answer?.isNa ?? false)
   const currentScore = question.answer?.score
+  const isPretQuestion = question.scoringModelVersion === 'pret_ce_v1'
+  const isBonusBoolean =
+    question.scoringGroup === 'bonus' &&
+    question.responseType === 'boolean_score'
+  const supportsNa = !isPretQuestion && question.scoringGroup !== 'bonus'
+  const effectiveIsNa = supportsNa && isNa
+  const displayPrefix = question.displayNumber
+    ? `${question.displayNumber}. `
+    : ''
 
   return (
     <article className="rounded-2xl border border-border bg-white p-4 shadow-sm">
@@ -233,8 +257,12 @@ function QuestionCard({
                 Critical
               </span>
             ) : null}
+            <span className="rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
+              {question.scoringGroup === 'bonus' ? 'Bonus' : 'Core Score'}
+            </span>
           </div>
           <h3 className="mt-3 text-base font-semibold leading-6 text-foreground">
+            {displayPrefix}
             {question.questionText}
           </h3>
           {question.questionDescription ? (
@@ -252,32 +280,69 @@ function QuestionCard({
         <input type="hidden" name="audit_id" value={auditId} />
         <input type="hidden" name="question_id" value={question.id} />
 
-        <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
-          Score
-          <input
-            name="score"
-            type="number"
-            min={0}
-            max={question.maxScore}
-            step="1"
-            disabled={readOnly || isNa}
-            defaultValue={currentScore ?? ''}
-            placeholder={`0-${question.maxScore}`}
-            className="min-h-11 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-background disabled:text-muted"
-          />
-        </label>
+        {isBonusBoolean ? (
+          <fieldset className="flex flex-col gap-3">
+            <legend className="text-sm font-semibold text-foreground">
+              Outstanding Card bonus
+            </legend>
+            <p className="text-sm leading-6 text-muted">
+              This bonus does not reduce the core score if it is not awarded.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex min-h-11 items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground">
+                <input
+                  name="score"
+                  type="radio"
+                  value="0"
+                  disabled={readOnly}
+                  defaultChecked={currentScore === 0 || currentScore == null}
+                  className="size-4 accent-primary"
+                />
+                No bonus / 0
+              </label>
+              <label className="flex min-h-11 items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground">
+                <input
+                  name="score"
+                  type="radio"
+                  value={question.maxScore}
+                  disabled={readOnly}
+                  defaultChecked={currentScore === question.maxScore}
+                  className="size-4 accent-primary"
+                />
+                Outstanding achieved / {question.maxScore}
+              </label>
+            </div>
+          </fieldset>
+        ) : (
+          <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
+            Score
+            <input
+              name="score"
+              type="number"
+              min={0}
+              max={question.maxScore}
+              step="1"
+              disabled={readOnly || effectiveIsNa}
+              defaultValue={currentScore ?? ''}
+              placeholder={`0-${question.maxScore}`}
+              className="min-h-11 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-background disabled:text-muted"
+            />
+          </label>
+        )}
 
-        <label className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground">
-          <input
-            name="is_na"
-            type="checkbox"
-            disabled={readOnly}
-            defaultChecked={isNa}
-            onChange={(event) => setIsNa(event.currentTarget.checked)}
-            className="size-4 accent-primary"
-          />
-          Mark as N/A
-        </label>
+        {supportsNa ? (
+          <label className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground">
+            <input
+              name="is_na"
+              type="checkbox"
+              disabled={readOnly}
+              defaultChecked={isNa}
+              onChange={(event) => setIsNa(event.currentTarget.checked)}
+              className="size-4 accent-primary"
+            />
+            Mark as N/A
+          </label>
+        ) : null}
 
         <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
           Notes

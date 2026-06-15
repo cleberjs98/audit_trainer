@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import type { PretSectionScores } from '@/components/checklist/types'
 import type { AuditStatus } from '@/types/audit'
 
 export type AuditHistoryItem = {
@@ -16,6 +17,8 @@ export type AuditHistoryItem = {
   totalScore: number
   maxScore: number
   percentage: number
+  sectionScores: PretSectionScores | null
+  scoringModelVersion: string
   createdAt: string
 }
 
@@ -59,6 +62,13 @@ function formatTime(value: string) {
 function scoreLabel(audit: AuditHistoryItem) {
   if (audit.maxScore <= 0) {
     return 'Not finalized'
+  }
+
+  if (audit.scoringModelVersion === 'pret_ce_v1') {
+    const bonusScore = Number(audit.sectionScores?.bonus?.total_score ?? 0)
+    const bonusMaxScore = Number(audit.sectionScores?.bonus?.max_score ?? 5)
+
+    return `${audit.totalScore}/${audit.maxScore} + ${bonusScore}/${bonusMaxScore} bonus`
   }
 
   return `${audit.totalScore}/${audit.maxScore} - ${audit.percentage}%`

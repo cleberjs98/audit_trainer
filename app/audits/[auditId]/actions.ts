@@ -27,6 +27,10 @@ type QuestionRow = {
   question_text: string
   max_score: number
   is_active: boolean
+  scoring_group?: 'core' | 'bonus' | null
+  response_type?: 'score' | 'boolean_score' | null
+  required_for_completion?: boolean | null
+  scoring_model_version?: string | null
 }
 
 type SectionRow = {
@@ -128,6 +132,61 @@ function parseScore(value: string, maxScore: number) {
   }
 
   return { ok: true as const, score }
+}
+
+function parseAnswerScore({
+  value,
+  maxScore,
+  isNa,
+  scoringGroup,
+  responseType,
+  scoringModelVersion,
+}: {
+  value: string
+  maxScore: number
+  isNa: boolean
+  scoringGroup: QuestionRow['scoring_group']
+  responseType: QuestionRow['response_type']
+  scoringModelVersion: string
+}) {
+  const isPretModel = scoringModelVersion === 'pret_ce_v1'
+
+  if (isPretModel && isNa) {
+    if (scoringGroup === 'bonus') {
+      return {
+        ok: false as const,
+        error: 'Outstanding Card bonus cannot be marked N/A.',
+      }
+    }
+
+    return {
+      ok: false as const,
+      error: 'Core score questions cannot be marked N/A.',
+    }
+  }
+
+  if (isNa) {
+    return { ok: true as const, score: null }
+  }
+
+  const scoreResult = parseScore(value, maxScore)
+
+  if (!scoreResult.ok) {
+    return scoreResult
+  }
+
+  if (
+    responseType === 'boolean_score' &&
+    scoreResult.score !== 0 &&
+    scoreResult.score !== maxScore
+  ) {
+    return {
+      ok: false as const,
+      error: `This bonus question only allows 0 or ${maxScore}.`,
+    }
+  }
+
+  return scoreResult
 }
 
 function answerWriteErrorMessage(error: { code?: string; message?: string }) {
@@ -238,7 +297,9 @@ export async function saveAuditAnswerAction(
 
   const { data: question, error: questionError } = await access.supabase
     .from('audit_questions')
-    .select('id, section_id, question_text, max_score, is_active')
+    .select(
+      'id, section_id, question_text, max_score, is_active, scoring_group, response_type, required_for_completion, scoring_model_version'
+    )
     .eq('id', questionId)
     .single<QuestionRow>()
 
@@ -262,9 +323,14 @@ export async function saveAuditAnswerAction(
     }
   }
 
-  const scoreResult = isNa
-    ? { ok: true as const, score: null }
-    : parseScore(scoreInput, question.max_score)
+  const scoreResult = parseAnswerScore({
+    value: scoreInput,
+    maxScore: question.max_score,
+    isNa,
+    scoringGroup: question.scoring_group ?? 'core',
+    responseType: question.response_type ?? 'score',
+    scoringModelVersion: question.scoring_model_version ?? 'legacy_62_v1',
+  })
 
   if (!scoreResult.ok) {
     return { status: 'error', message: scoreResult.error }

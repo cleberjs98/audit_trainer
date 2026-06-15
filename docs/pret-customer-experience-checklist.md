@@ -51,6 +51,17 @@ All core questions use:
 - `scoring_group: core`
 - `response_type: score`
 - `required_for_completion: true`
+- `max_score: 5`
+
+### V1 Scoring Normalization Note
+
+The source report displays question 13 as 3 points and question 14 as 2 points. App V1 intentionally normalizes every core question to 5 points so the operational model stays simple:
+
+```txt
+19 core questions x 5 points = 95 points
+```
+
+This means questions 13 and 14 are stored as 5-point questions in the app, even though the source PDF uses smaller point values for those two rows.
 
 ### 1. Shop Exterior and Entrance
 
@@ -177,7 +188,7 @@ How well did the person at the till engage with you (eye contact, smile and gree
 Question:
 Did you receive a pleasant parting comment at point of payment from the team member that served you?
 
-- `max_score: 3`
+- `max_score: 5`
 - `scoring_group: core`
 - `response_type: score`
 - `required_for_completion: true`
@@ -187,7 +198,7 @@ Did you receive a pleasant parting comment at point of payment from the team mem
 Question:
 Were you acknowledged when your drink was handed to you?
 
-- `max_score: 2`
+- `max_score: 5`
 - `scoring_group: core`
 - `response_type: score`
 - `required_for_completion: true`

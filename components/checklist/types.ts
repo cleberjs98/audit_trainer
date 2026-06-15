@@ -1,5 +1,18 @@
 export type AuditStatus = 'draft' | 'in_progress' | 'completed' | 'archived'
 export type AuditScoreBand = 'excellent' | 'good' | 'needs_focus' | 'critical'
+export type QuestionScoringGroup = 'core' | 'bonus'
+export type QuestionResponseType = 'score' | 'boolean_score'
+
+export type PretBonusScore = {
+  total_score?: number | string | null
+  max_score?: number | string | null
+  answered?: boolean | null
+}
+
+export type PretSectionScores = {
+  scoring_model_version?: string
+  bonus?: PretBonusScore | null
+}
 
 export type ChecklistStore = {
   id: string
@@ -23,6 +36,8 @@ export type ChecklistAudit = {
   maxScore: number
   percentage: number
   scoreBand: AuditScoreBand | null
+  sectionScores: PretSectionScores | null
+  scoringModelVersion: string
   completedAt: string | null
   store: ChecklistStore
 }
@@ -46,6 +61,11 @@ export type ChecklistQuestion = {
   maxScore: number
   isRequired: boolean
   isCritical: boolean
+  scoringGroup: QuestionScoringGroup
+  responseType: QuestionResponseType
+  requiredForCompletion: boolean
+  displayNumber: number | null
+  scoringModelVersion: string
   orderIndex: number
   answer: ChecklistAnswer | null
 }
@@ -59,8 +79,12 @@ export type ChecklistSection = {
 }
 
 export type ScorePreview = {
-  totalScore: number
-  maxScore: number
+  coreScore: number
+  coreMaxScore: number
+  corePercentage: number | null
+  bonusScore: number
+  bonusMaxScore: number
+  combinedLabel: string
   percentage: number | null
   answeredCount: number
 }

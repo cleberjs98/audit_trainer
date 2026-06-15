@@ -7,6 +7,7 @@ import type {
   ChecklistQuestion,
   ChecklistSection,
   ChecklistStore,
+  PretSectionScores,
   ScorePreview,
 } from '@/components/checklist/types'
 import { MissingProfileDashboard } from '@/components/dashboard/dashboard-shell'
@@ -28,6 +29,8 @@ type AuditRow = {
   max_score: number | string
   percentage: number | string
   score_band: ChecklistAudit['scoreBand']
+  section_scores: PretSectionScores | null
+  scoring_model_version: string | null
   completed_at: string | null
 }
 
@@ -53,6 +56,11 @@ type QuestionRow = {
   max_score: number
   is_required: boolean
   is_critical: boolean
+  scoring_group?: ChecklistQuestion['scoringGroup'] | null
+  response_type?: ChecklistQuestion['responseType'] | null
+  required_for_completion?: boolean | null
+  display_number?: number | null
+  scoring_model_version?: string | null
   order_index: number
 }
 
@@ -91,6 +99,8 @@ function toChecklistAudit(audit: AuditRow, store: StoreRow): ChecklistAudit {
     maxScore: toNumber(audit.max_score),
     percentage: toNumber(audit.percentage),
     scoreBand: audit.score_band,
+    sectionScores: audit.section_scores,
+    scoringModelVersion: audit.scoring_model_version ?? 'legacy_62_v1',
     completedAt: audit.completed_at,
     store: {
       id: store.id,
@@ -135,6 +145,12 @@ function buildSections(
       maxScore: toNumber(question.max_score),
       isRequired: question.is_required,
       isCritical: question.is_critical,
+      scoringGroup: question.scoring_group ?? 'core',
+      responseType: question.response_type ?? 'score',
+      requiredForCompletion:
+        question.required_for_completion ?? question.is_required,
+      displayNumber: question.display_number ?? null,
+      scoringModelVersion: question.scoring_model_version ?? 'legacy_62_v1',
       orderIndex: question.order_index,
       answer: answersByQuestion.get(question.id) ?? null,
     })
@@ -153,24 +169,61 @@ function buildSections(
   }))
 }
 
-function calculateScorePreview(answers: AnswerRow[]): ScorePreview {
-  const scoredAnswers = answers.filter(
-    (answer) => !answer.is_na && answer.score !== null
+function calculateScorePreview(sections: ChecklistSection[]): ScorePreview {
+  const questions = sections.flatMap((section) => section.questions)
+  const coreScoredQuestions = questions.filter(
+    (question) =>
+      question.scoringGroup === 'core' &&
+      question.answer &&
+      !question.answer.isNa &&
+      question.answer.score !== null
   )
-  const totalScore = scoredAnswers.reduce(
-    (total, answer) => total + toNumber(answer.score),
+  const bonusScoredQuestions = questions.filter(
+    (question) =>
+      question.scoringGroup === 'bonus' &&
+      question.answer &&
+      !question.answer.isNa &&
+      question.answer.score !== null
+  )
+  const coreScore = coreScoredQuestions.reduce(
+    (total, question) => total + toNumber(question.answer?.score),
     0
   )
-  const maxScore = scoredAnswers.reduce(
-    (total, answer) => total + toNumber(answer.max_score),
+  const coreMaxScore = questions
+    .filter((question) => question.scoringGroup === 'core')
+    .reduce((total, question) => total + toNumber(question.maxScore), 0)
+  const legacyCoreMaxScore = coreScoredQuestions.reduce(
+    (total, question) => total + toNumber(question.maxScore),
     0
   )
+  const displayCoreMaxScore = coreMaxScore > 0 ? coreMaxScore : legacyCoreMaxScore
+  const bonusScore = bonusScoredQuestions.reduce(
+    (total, question) => total + toNumber(question.answer?.score),
+    0
+  )
+  const bonusMaxScore = questions
+    .filter((question) => question.scoringGroup === 'bonus')
+    .reduce((total, question) => total + toNumber(question.maxScore), 0)
+  const combinedLabel =
+    displayCoreMaxScore > 0
+      ? `${coreScore}/${displayCoreMaxScore} + ${bonusScore}/${bonusMaxScore} bonus`
+      : 'No scored answers yet'
 
   return {
-    totalScore,
-    maxScore,
-    percentage: maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : null,
-    answeredCount: scoredAnswers.length,
+    coreScore,
+    coreMaxScore: displayCoreMaxScore,
+    corePercentage:
+      displayCoreMaxScore > 0
+        ? Math.round((coreScore / displayCoreMaxScore) * 100)
+        : null,
+    bonusScore,
+    bonusMaxScore,
+    combinedLabel,
+    percentage:
+      displayCoreMaxScore > 0
+        ? Math.round((coreScore / displayCoreMaxScore) * 100)
+        : null,
+    answeredCount: coreScoredQuestions.length + bonusScoredQuestions.length,
   }
 }
 
@@ -223,7 +276,7 @@ export default async function AuditDetailPage({
   const { data: audit, error: auditError } = await supabase
     .from('audits')
     .select(
-      'id, store_id, status, is_locked, visit_date, visit_time, mod, shift_type, traffic_level, visit_type, total_score, max_score, percentage, score_band, completed_at'
+      'id, store_id, status, is_locked, visit_date, visit_time, mod, shift_type, traffic_level, visit_type, total_score, max_score, percentage, score_band, section_scores, scoring_model_version, completed_at'
     )
     .eq('id', auditId)
     .single<AuditRow>()
@@ -253,7 +306,7 @@ export default async function AuditDetailPage({
       supabase
         .from('audit_questions')
         .select(
-          'id, section_id, question_text, question_description, max_score, is_required, is_critical, order_index'
+          'id, section_id, question_text, question_description, max_score, is_required, is_critical, scoring_group, response_type, required_for_completion, display_number, scoring_model_version, order_index'
         )
         .eq('is_active', true)
         .order('section_id', { ascending: true })
@@ -273,7 +326,7 @@ export default async function AuditDetailPage({
     questionRows ?? [],
     answerRows ?? []
   )
-  const scorePreview = calculateScorePreview(answerRows ?? [])
+  const scorePreview = calculateScorePreview(sections)
 
   return (
     <AuditChecklist

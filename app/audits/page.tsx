@@ -27,6 +27,8 @@ type AuditRow = {
   total_score: number | string
   max_score: number | string
   percentage: number | string
+  section_scores: AuditHistoryItem['sectionScores']
+  scoring_model_version: string | null
   created_at: string
 }
 
@@ -101,6 +103,8 @@ function buildAuditItems(
       totalScore: toNumber(audit.total_score),
       maxScore: toNumber(audit.max_score),
       percentage: toNumber(audit.percentage),
+      sectionScores: audit.section_scores,
+      scoringModelVersion: audit.scoring_model_version ?? 'legacy_62_v1',
       createdAt: audit.created_at,
     }
   })
@@ -137,7 +141,7 @@ export default async function AuditHistoryPage({
   let auditQuery = supabase
     .from('audits')
     .select(
-      'id, store_id, audited_by, status, is_locked, visit_date, visit_time, total_score, max_score, percentage, created_at'
+      'id, store_id, audited_by, status, is_locked, visit_date, visit_time, total_score, max_score, percentage, section_scores, scoring_model_version, created_at'
     )
 
   if (activeStatus) {
