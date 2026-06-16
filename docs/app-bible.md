@@ -1296,6 +1296,25 @@ Multi-language support
 
 Esses itens podem ser adicionados depois.
 
+### 23.1 Status atual do V1 manual
+
+Manual Action Plans V1 esta implementado:
+
+- `/action-plans` lista planos de acao no escopo do usuario.
+- `/action-plans/[actionPlanId]` abre o detalhe do plano.
+- O dashboard aponta para Action Plans.
+- Auditorias completed permitem criar ou abrir um plano de acao.
+- Planos manuais usam auditorias completed e um plano por auditoria.
+- Leaders podem visualizar planos da propria loja, mas nao editar em V1.
+- Nao ha delete em V1.
+
+Ainda nao implementado:
+
+- AI-generated action plans.
+- PDF export.
+- Email sending.
+- Final mobile QA em ambiente deployado; testes locais por LAN/IP nao sao a fonte final de verdade.
+
 ---
 
 ## 24. Nome do Produto

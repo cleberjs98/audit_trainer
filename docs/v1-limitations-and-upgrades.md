@@ -23,7 +23,7 @@ This document records which parts are deliberately simple for V1, why that is ac
 - The Start New Audit card links to `/start-audit`.
 - The View Audit History card links to `/audits`.
 - Store Management is visible only to `admin` and `area_manager`.
-- Action Plans is still a placeholder.
+- The Action Plans card links to `/action-plans`.
 
 ### Store Management V1
 
@@ -86,7 +86,8 @@ Required post-deploy mobile test checklist:
 - The existing database trigger sets `is_locked = true` and `completed_at` when status changes to `completed`.
 - Completed audits become read-only in the normal UI.
 - No score payload, score band, section scores, status, lock state, role, or store scope is trusted from the client.
-- No photos, AI report, PDF, action plan, or reopen flow is implemented in this phase.
+- No photos, AI report, PDF, or reopen flow is implemented in this phase.
+- Manual action plan creation is implemented separately from completed audit detail.
 
 ### Audit History V1
 
@@ -103,6 +104,24 @@ Required post-deploy mobile test checklist:
 - Store name, store code, area name, and creator display are shown when available through RLS.
 - Score display uses persisted `audits.total_score`, `audits.max_score`, and `audits.percentage`; when no persisted score exists, it shows "Not finalized".
 - The page is list/navigation only.
+
+### Manual Action Plans V1
+
+- `/action-plans` is implemented as a role-scoped list page.
+- `/action-plans/[actionPlanId]` is implemented as the action plan detail page.
+- The dashboard Action Plans card links to `/action-plans`.
+- Completed audit detail shows either "Create Action Plan" or "View Action Plan".
+- Draft and in-progress audits show that action plans become available after completion.
+- Manual action plans can be created only for completed audits.
+- One action plan per audit is enforced by the database.
+- Manual plans use `generated_by_ai = false`.
+- Admins can manage all manual action plans.
+- Area managers can manage manual action plans for stores in their assigned area.
+- Store managers can manage manual action plans for their assigned store.
+- Leaders can view own-store action plans but cannot create or update action plans or items in V1.
+- Manual action items support description, owner, priority, due date, success measure, and status.
+- Action item create, edit, and status update are implemented for allowed roles while the parent plan is open or in progress.
+- Delete is not implemented in V1.
 
 ### RLS Migrations 004 and 005
 
@@ -158,7 +177,7 @@ This is safe because audit creation is role-scoped server-side and RLS remains t
 - No critical flag UI yet.
 - No AI summary.
 - No PDF export.
-- No action plan.
+- The checklist itself does not create action plans; manual action plan creation happens after completion.
 - N/A support exists in the current checklist flow and the completion RPC excludes N/A answers from numerator and denominator.
 - Notes are simple text.
 - Answer snapshots are trusted from the database and written server-side.
@@ -226,11 +245,14 @@ The current action writes `is_critical_flag = false` because there is no critica
 - Uploads should use a future server route or server action with strict audit scope checks.
 - Direct client storage reads, writes, updates, and deletes should remain denied in V1.
 
-### AI Reports / PDF / Action Plans
+### AI Reports / PDF / Email
 
 - Database tables exist for AI reports and action plans.
-- UI and generation flows are not implemented yet.
-- These should be generated after audit completion or review.
+- Manual Action Plans V1 is implemented.
+- AI-generated action plans are not implemented yet.
+- PDF export is not implemented yet.
+- Email sending is not implemented yet.
+- AI reports should be generated after audit completion or review in a future phase.
 - OpenAI calls must remain server-side.
 - PDF generation must not expose private audit data or service-role credentials to the browser.
 
@@ -252,7 +274,7 @@ These should be updated after the new V1 role model is stable across the complet
 2. Photo upload V1
 3. AI report generation
 4. PDF export
-5. Action plan generation
+5. AI-generated action plan recommendations
 6. User / Role Assignment
 7. Analytics and comparison dashboards
 

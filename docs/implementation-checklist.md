@@ -35,7 +35,7 @@ Ao final de cada fase, confirmar sempre:
 
 ## Registro de limitações V1
 
-- [ ] Audit History V1 and Review / Complete Audit V1 implementados; antes de implementar Photos, AI, PDF, Action Plans, User / Role Assignment ou Analytics, revisar `docs/v1-limitations-and-upgrades.md`
+- [ ] Audit History V1, Review / Complete Audit V1 e Manual Action Plans V1 implementados; antes de implementar Photos, AI, PDF, email, User / Role Assignment ou Analytics, revisar `docs/v1-limitations-and-upgrades.md`
 - [ ] Após o core flow estabilizar, limpar drift documentado e remover linguagem antiga de leader read-only, auditor e manager dos documentos legados
 
 ---
@@ -902,40 +902,53 @@ feat: add AI action plan generation
 
 ## 17.1 Exibição
 
-- [ ] `ActionPlanList` criado
-- [ ] Action exibida
-- [ ] Owner exibido
-- [ ] Priority exibida
-- [ ] Due Date exibida
-- [ ] Success Measure exibida
-- [ ] Status exibido
+- [x] `/action-plans` list page criado
+- [x] `/action-plans/[actionPlanId]` detail page criado
+- [x] Dashboard Action Plans card habilitado
+- [x] Completed audit detail mostra `Create Action Plan` ou `View Action Plan`
+- [x] Manual action item description exibida
+- [x] Owner exibido
+- [x] Priority exibida
+- [x] Due Date exibida
+- [x] Success Measure exibida
+- [x] Status exibido
+- [x] Manual plans use completed audits and one plan per audit
 
 ## 17.2 Atualização de status
 
-- [ ] Admin pode atualizar status
-- [ ] Area Manager apenas visualiza action plans em V1
-- [ ] Store Manager apenas visualiza action plans em V1 até existir RPC/server route de tracking
-- [ ] Leader apenas visualiza action plans
-- [ ] Usuário sem permissão não altera status
+- [x] Admin pode criar e atualizar action plans no escopo total
+- [x] Area Manager pode criar e atualizar action plans dentro da própria área
+- [x] Store Manager pode criar e atualizar action plans da própria store
+- [x] Leader apenas visualiza action plans em V1
+- [x] Usuário sem permissão não altera status
+- [x] No delete in V1
 
 ## 17.3 Página dedicada
 
-- [ ] Rota `/audits/[id]/action-plan` criada
-- [ ] Plano de ação abre corretamente
+- [x] Rota `/action-plans` criada
+- [x] Rota `/action-plans/[actionPlanId]` criada
+- [x] Plano de ação abre corretamente
+- [x] Action item create/edit/status update implemented manually
 
 ## 17.4 Limpeza e consolidação
 
-- [ ] Lógica duplicada removida
-- [ ] Badges padronizados
-- [ ] Permissões revisadas
-- [ ] Lint executado
-- [ ] Typecheck executado
-- [ ] Build executado
-- [ ] Commit criado
+- [x] Lógica duplicada removida
+- [x] Badges padronizados
+- [x] Permissões revisadas
+- [x] Lint executado
+- [x] Typecheck executado
+- [x] Build executado
+- [x] Commit criado
+
+## 17.5 Fora do escopo V1
+
+- [ ] AI-generated action plans ainda não implementado
+- [ ] PDF/export/email ainda não implementados
+- [ ] Mobile QA final permanece pós-deploy em URL HTTPS real
 
 **Commit sugerido:**  
 ```txt
-feat: add action plan tracking
+feat: add manual action plans v1
 ```
 
 ---
