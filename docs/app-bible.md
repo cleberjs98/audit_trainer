@@ -291,6 +291,13 @@ Ações:
 
 A tela de login deve ser limpa, profissional e direta.
 
+Estado atual do V1:
+
+- A tela usa layout split no desktop e layout mobile-first no celular.
+- O CTA **Sign in** usa Signal Crimson com texto branco.
+- O botao **Show/Hide** de senha apenas alterna a visibilidade localmente e nao altera o fluxo de autenticacao.
+- **Forgot password?** existe como placeholder seguro ate a recuperacao de senha ser implementada.
+
 ---
 
 ### 10.2 Store Dashboard
@@ -381,7 +388,15 @@ Mystery Shop Simulation
 
 ### 10.5 Checklist Screen
 
-O checklist deve ser dividido em seções simples.
+O checklist deve ser focado e rápido para uso mobile durante a auditoria.
+
+Estado atual do V1:
+
+- O checklist Pret CE V1 usa um wizard guiado mobile-first com uma pergunta por vez.
+- A navegação usa stepper circular com marcadores clicáveis.
+- O selector de score core usa botões segmentados 0-5.
+- O Outstanding Card bonus usa opções 0/5 ou 5/5 e não penaliza o score core.
+- Legacy audits podem manter comportamento anterior quando necessário.
 
 Cada pergunta deve permitir:
 
@@ -1184,6 +1199,7 @@ Professional
 Operational
 Simple
 Training-focused
+Modern command-center
 ```
 
 Evitar:
@@ -1198,17 +1214,51 @@ Tiny buttons
 Long forms on one screen
 ```
 
-Estilo recomendado:
+Estilo visual atual:
 
-- Fundo claro ou branco
-- Cards limpos
-- Cabeçalhos de seção fortes
-- Botões grandes para toque no celular
-- Botões simples de score
-- Indicador claro de progresso
-- Botão fixo de **Next Section**
-- Ação visível de **Save Draft**
-- Layout mobile-first
+- Identidade própria do produto **Audit Trainer**, não Pret-specific.
+- Direção **Graphite + Signal Crimson**.
+- Fundo principal cinza claro/branco, não creme/bege como identidade principal.
+- Superfícies brancas ou `surface-soft`.
+- Ações primárias em Signal Crimson com texto branco.
+- Sidebar escura graphite no dashboard desktop.
+- Cards brancos com borda cinza suave e sombra premium discreta.
+- Badges de status com cores semânticas: verde, âmbar, vermelho, graphite/info e gold para bonus.
+- Formulários com bordas cinza, foco crimson e touch targets confortáveis.
+- Layout mobile-first.
+
+Tokens atuais:
+
+```txt
+background: #F4F6F8
+surface: #FFFFFF
+surface-soft: #F8FAFC
+primary / Signal Crimson: #D11F3A
+primary-dark: #A9152D
+primary-soft: #FDE8EC
+foreground / Graphite: #171A1F
+muted: #667085
+muted-strong: #475467
+border: #D9DEE7
+accent / bonus gold: #FFB020
+success: #12B76A
+warning: #F79009
+danger: #F04438
+info: #344054
+```
+
+Checklist visual atual:
+
+- Marcadores circulares conectados por uma linha horizontal.
+- Core 5/5 = verde.
+- Core 4/5 = âmbar.
+- Core 0-3/5 = vermelho.
+- Pergunta não respondida = neutro.
+- Step atual não respondido = crimson com texto branco.
+- Step atual respondido preserva a cor do score e recebe ring crimson.
+- Bonus 5/5 = gold.
+- Bonus 0/5 ou não respondido = neutro, nunca vermelho.
+- Score Pret CE V1 deve preferir `88/95 + 5/5 bonus`, não apenas `93/100`.
 
 ---
 

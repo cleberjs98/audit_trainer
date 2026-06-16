@@ -36,6 +36,7 @@ Ao final de cada fase, confirmar sempre:
 ## Registro de limitações V1
 
 - [ ] Audit History V1, Review / Complete Audit V1 e Manual Action Plans V1 implementados; antes de implementar Photos, AI, PDF, email, User / Role Assignment ou Analytics, revisar `docs/v1-limitations-and-upgrades.md`
+- [x] Visual identity refresh implementado e validado: Audit Trainer identity, Graphite + Signal Crimson, white/gray surfaces, dark dashboard sidebar, circular checklist stepper e segmented 0-5 core score selector
 - [ ] Após o core flow estabilizar, limpar drift documentado e remover linguagem antiga de leader read-only, auditor e manager dos documentos legados
 
 ---
@@ -297,10 +298,12 @@ feat: add database schema, RLS policies and checklist seed
 ## 4.4 Validação visual necessária
 
 - [ ] Login visualmente alinhado ao design system
-- [ ] Fundo creme claro aplicado
-- [ ] Bordô aplicado no botão principal
+- [ ] Fundo cinza claro/branco aplicado
+- [ ] Signal Crimson aplicado no botão principal com texto branco
 - [ ] Card de login arredondado
 - [ ] App name exibido como `Audit Trainer`
+- [ ] Password Show/Hide funciona como toggle local sem alterar auth
+- [ ] Forgot password permanece placeholder seguro até a recuperação ser implementada
 
 ## 4.5 Limpeza e consolidação
 
@@ -371,15 +374,17 @@ feat: add role-based access control
 
 ## 6.1 Tokens visuais
 
-- [ ] Cor Primary Burgundy definida
-- [ ] Cor Dark Burgundy definida
-- [ ] Cor Cream Background definida
-- [ ] Cor Light Surface definida
-- [ ] Cor Text Black definida
-- [ ] Cor Muted Text definida
-- [ ] Cor Border definida
-- [ ] Cores de status definidas: verde, amarelo/âmbar, vermelho
-- [ ] Tailwind theme atualizado
+- [x] Cor Signal Crimson definida
+- [x] Cor Primary Dark definida
+- [x] Cor Primary Soft definida
+- [x] Cor Graphite/Foreground definida
+- [x] Cor Gray Background definida
+- [x] Cor White Surface definida
+- [x] Cor Surface Soft definida
+- [x] Cor Muted Text definida
+- [x] Cor Border definida
+- [x] Cores de status definidas: verde, amarelo/âmbar, vermelho
+- [x] Tailwind theme atualizado
 
 ## 6.2 AppShell
 
@@ -403,8 +408,11 @@ feat: add role-based access control
 
 ## 6.4 Validação visual necessária
 
-- [ ] Visual segue creme claro + bordô
-- [ ] Cards têm borda bege sutil
+- [x] Visual segue Graphite + Signal Crimson
+- [x] Product identity não é Pret-specific
+- [x] Primary crimson buttons usam texto branco
+- [x] Dashboard desktop usa sidebar graphite com Sign out no footer
+- [x] Cards usam superficie branca/cinza, borda sutil e sombra premium
 - [ ] Botões têm tamanho confortável
 - [ ] Tipografia legível no celular
 - [ ] Sem overflow horizontal
@@ -598,8 +606,8 @@ feat: add store management basics
 
 - [ ] Tela segue mockup aprovado
 - [ ] Card central limpo
-- [ ] Botão `Start Audit` em bordô
-- [ ] Botão `Save Draft` secundário
+- [ ] Botão `Start Audit` em Signal Crimson com texto branco
+- [ ] Ações secundárias usam outline/surface-soft
 
 ## 10.5 Limpeza e consolidação
 
@@ -629,10 +637,11 @@ feat: add new audit creation flow
 ## 11.2 Seções
 
 - [ ] Perguntas agrupadas por seção
-- [ ] Uma seção por vez
+- [x] Uma pergunta por vez no wizard Pret CE V1
 - [ ] Progresso exibido
-- [ ] Navegação `Previous Section`
-- [ ] Navegação `Next Section`
+- [x] Navegação `Back`
+- [x] Navegação `Save & Continue`
+- [x] Navegação `Save & Review`
 
 ## 11.3 Question cards
 
@@ -654,10 +663,11 @@ feat: add new audit creation flow
 ## 11.5 Validação visual necessária
 
 - [ ] Tela segue mockup aprovado
-- [ ] Todos os cards da seção aparecem abertos
-- [ ] Score buttons são fáceis de tocar
-- [ ] Botão `Next Section` dominante
-- [ ] `Save Draft` visível
+- [x] Checklist usa wizard de uma pergunta por vez
+- [x] Stepper circular usa cores por score: 5/5 verde, 4/5 âmbar, 0-3/5 vermelho, unanswered neutro, bonus 5/5 gold, bonus 0/5 neutro
+- [x] Score selector core usa botões segmentados 0-5
+- [ ] Score buttons são fáceis de tocar no mobile pós-deploy
+- [ ] `Save & Continue` / `Save & Review` permanecem claros
 
 ## 11.6 Limpeza e consolidação
 
@@ -786,7 +796,7 @@ feat: add photo upload for audit answers
 ## 14.3 Validação visual necessária
 
 - [ ] Tela segue mockup aprovado
-- [ ] Score aparece como `76/95 · 80%`
+- [ ] Score Pret CE V1 aparece como `88/95 + 5/5 bonus`
 - [ ] Status chip aparece
 - [ ] Botão `Complete Audit` dominante
 - [ ] Botão `Back to Checklist` secundário
@@ -934,6 +944,7 @@ feat: add AI action plan generation
 
 - [x] Lógica duplicada removida
 - [x] Badges padronizados
+- [x] Action Plans visual usa status/priority badges semânticos e cards alinhados ao Graphite + Signal Crimson refresh
 - [x] Permissões revisadas
 - [x] Lint executado
 - [x] Typecheck executado
@@ -1042,15 +1053,15 @@ feat: add PDF export
 - [ ] `public/manifest.json` criado
 - [ ] Name definido como `Audit Trainer`
 - [ ] Short name definido
-- [ ] Theme color bordô definido
-- [ ] Background color creme definido
+- [ ] Theme color Signal Crimson definido
+- [ ] Background color cinza claro definido
 - [ ] Start URL definida
 
 ## 20.2 Ícones
 
 - [ ] Ícone 192x192 criado
 - [ ] Ícone 512x512 criado
-- [ ] Ícone usa checklist em bordô
+- [ ] Ícone usa identidade Audit Trainer / Signal Crimson
 - [ ] Ícones referenciados no manifest
 
 ## 20.3 Service Worker
@@ -1127,8 +1138,8 @@ feat: add basic admin user management
 
 ## 22.2 Checklist mobile
 
-- [ ] Next Section sempre claro
-- [ ] Save Draft visível
+- [ ] Save & Continue sempre claro
+- [ ] Save & Review claro no fim do wizard
 - [ ] Add Photo claro
 - [ ] Comentários fáceis de usar
 

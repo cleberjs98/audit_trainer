@@ -8,6 +8,38 @@ This document records which parts are deliberately simple for V1, why that is ac
 
 ## 2. Current Implemented Modules
 
+### Visual Identity Refresh
+
+- The app now uses its own **Audit Trainer** identity rather than a Pret-specific theme.
+- The approved direction is **Graphite + Signal Crimson**:
+  - `background`: `#F4F6F8`
+  - `surface`: `#FFFFFF`
+  - `surface-soft`: `#F8FAFC`
+  - `primary`: `#D11F3A`
+  - `primary-dark`: `#A9152D`
+  - `primary-soft`: `#FDE8EC`
+  - `foreground`: `#171A1F`
+  - `muted`: `#667085`
+  - `border`: `#D9DEE7`
+  - `accent`: `#FFB020`
+  - `success`: `#12B76A`
+  - `warning`: `#F79009`
+  - `danger`: `#F04438`
+  - `info`: `#344054`
+- Primary crimson buttons must use white text.
+- Dashboard desktop uses a dark graphite sidebar with Sign out in the sidebar footer.
+- Cards use white/light-gray surfaces, subtle gray borders, and premium shadow.
+- Badges and status chips use semantic colors rather than brand color alone.
+- Login includes a local password Show/Hide toggle and a safe Forgot password placeholder.
+- The Pret CE V1 checklist uses a circular connected stepper:
+  - Core 5/5: green.
+  - Core 4/5: amber.
+  - Core 0-3/5: red.
+  - Unanswered: neutral.
+  - Bonus 5/5: gold.
+  - Bonus 0/5 or unanswered: neutral, never red.
+- The core score selector is segmented 0-5 for Pret CE V1 questions.
+
 ### Auth/Login
 
 - Supabase email/password login is implemented.
@@ -62,6 +94,7 @@ This document records which parts are deliberately simple for V1, why that is ac
 - During local development, phone testing can be unreliable because of dev-server HMR, cache, and local network behavior.
 - Pret CE V1 guided flow should not be blocked on local phone testing when local desktop validation passes.
 - Final mobile QA must happen after deployment on a real HTTPS URL.
+- The Pret CE V1 guided flow and visual identity refresh have passed local desktop validation; local LAN/IP phone testing remains advisory only.
 
 Required post-deploy mobile test checklist:
 

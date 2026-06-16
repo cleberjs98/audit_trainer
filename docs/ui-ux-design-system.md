@@ -14,19 +14,19 @@ Store Audit Trainer
 Tipo
 PWA mobile-first
 Identidade inicial
-App interno, simples e operacional
+Audit Trainer com identidade propria, nao Pret-specific
 Estilo visual
-SaaS moderno com fundo creme claro e cards
+Operations command center moderno com superficies branco/cinza
 Cores principais
-Bordô, creme e preto
+Graphite, Signal Crimson, branco e cinza operacional
 Cor primária
-Bordô elegante
+Signal Crimson
 Ícone
-Checklist dentro de um quadrado arredondado
+AT dentro de um quadrado arredondado Signal Crimson
 Fluxo do checklist
-Uma seção por vez, com todas as perguntas da seção abertas em cards
+Wizard guiado com uma pergunta por vez, stepper circular e review final
 Score
-Pontos + percentual, exemplo: 76/95 · 80% — Needs Focus
+Core + bonus, exemplo: 88/95 + 5/5 bonus
 Tom do relatório
 Profissional e diplomático
 Relatório
@@ -38,9 +38,9 @@ Apenas quando necessário, principalmente em telas importantes
 - A interface deve ser clara mesmo em ambiente com movimento, pressa e iluminação forte.
 - O usuário não deve precisar pensar muito para avançar: cada tela deve ter uma ação principal evidente.
 - O dashboard deve priorizar performance e action plans, não apenas criação de auditorias.
-- O checklist deve mostrar uma seção por vez para manter foco e contexto.
-- Todas as perguntas da seção ficam abertas para acelerar a auditoria.
-- Score e status devem aparecer sempre em pontos e percentual.
+- O checklist deve mostrar uma pergunta por vez no fluxo guiado para manter foco e contexto.
+- O stepper circular deve permitir voltar, avançar e saltar para perguntas respondidas ou pendentes.
+- Score e status devem aparecer em pontos claros; Pret CE V1 deve preferir core + bonus, por exemplo `88/95 + 5/5 bonus`.
 - A IA deve produzir relatório em inglês, com tom profissional, diplomático e focado em treinamento.
 - O app é interno por enquanto, então deve ser funcional, limpo e confiável, sem parecer marketing demais.
 # 3. Papéis e Hierarquia de Acesso
@@ -58,39 +58,51 @@ Acessa todas as auditorias da própria loja para aprender, comparar e treinar. P
 Token
 Hex
 Uso
-Primary Burgundy
-#7A1E2C
-Botões principais, ícones ativos, barra de progresso, links importantes.
-Dark Burgundy
-#4A0F1A
-Estados de hover/press, cabeçalhos fortes e detalhes premium.
-Accent Red
-#B3263A
-Alertas de marca com baixa frequência.
-Cream Background
-#F7F1E8
+Background
+#F4F6F8
 Fundo geral do app.
-Light Surface
-#FFFCF7
-Cards, inputs e superfícies principais.
-Text Black
-#171717
+Surface
+#FFFFFF
+Cards, inputs e superficies principais.
+Surface Soft
+#F8FAFC
+Filtros, areas secundarias, campos leves e painels discretos.
+Signal Crimson / Primary
+#D11F3A
+Botoes principais, links importantes, progresso ativo e marca.
+Primary Dark
+#A9152D
+Estados de hover/press para acoes principais.
+Primary Soft
+#FDE8EC
+Badges, fundos leves e estados sutis da marca.
+Graphite / Foreground
+#171A1F
 Títulos e texto primário.
 Muted Text
-#6B625C
+#667085
 Subtítulos, placeholders e textos secundários.
-Border Beige
-#E5D8CC
+Muted Strong
+#475467
+Texto secundario com mais enfase.
+Border
+#D9DEE7
 Bordas suaves de cards e inputs.
+Accent
+#FFB020
+Destaques especiais e Outstanding Card bonus.
 Success
-#15803D
+#12B76A
 Status Excellent, melhoria positiva e indicadores aprovados.
 Warning
-#B7791F
+#F79009
 Status Good/Needs Focus leve, alertas médios.
 Danger
-#B91C1C
+#F04438
 Critical, erros e problemas graves.
+Info
+#344054
+Areas informativas, paineis escuros e sidebar.
 # 5. Status e Score
 Faixa
 Status
@@ -112,51 +124,58 @@ Abaixo de 70%
 Critical
 Vermelho
 Precisa de atenção imediata.
-Regra importante: o bordô é a cor da marca e das ações principais. Os status devem seguir verde/amarelo/vermelho para evitar confusão visual.
+Regra importante: Signal Crimson é a cor da marca e das ações principais. Os status devem seguir verde/âmbar/vermelho para evitar confusão visual. Bonus 0/5 ou bonus não respondido deve ser neutro, nunca vermelho, porque não penaliza o core score.
 # 6. Tipografia e Estilo Visual
 - Usar uma fonte sans-serif limpa, como Inter, Geist, Arial ou equivalente.
 - Títulos grandes, pretos, com peso forte.
-- Texto secundário em cinza quente.
-- Botões com bordas arredondadas, altura confortável para toque e cor bordô.
-- Cards com fundo Light Surface, borda bege suave e sombra discreta.
+- Texto secundário em cinza operacional.
+- Botões com bordas arredondadas, altura confortável para toque e cor Signal Crimson.
+- Botões primary/crimson sempre usam texto branco.
+- Cards com fundo branco, borda cinza suave e sombra discreta.
 - Evitar excesso de animações, gradientes fortes ou elementos decorativos pesados.
-- O fundo deve ser creme claro, não branco puro, para dar uma sensação mais quente e premium.
+- O fundo deve ser cinza claro/branco, não creme/bege como identidade principal.
 # 7. Componentes Base
 Componente
 Definição
 App Icon
-Checklist dentro de quadrado arredondado bordô.
+AT dentro de quadrado arredondado Signal Crimson.
 Primary Button
-Fundo bordô, texto branco, alto contraste, usado para ações principais.
+Fundo Signal Crimson, texto branco, alto contraste, usado para ações principais.
 Secondary Button
-Fundo claro, borda bege, texto bordô.
+Fundo branco ou surface-soft, borda cinza, texto graphite ou crimson no hover.
 Card
-Superfície creme/branca, borda bege, raio grande e sombra suave.
+Superficie branca, borda cinza suave, raio grande e sombra premium discreta.
 Input / Select
-Borda bege, ícone à esquerda, placeholder cinza, chevron bordô quando dropdown.
+Borda cinza, placeholder cinza, foco com ring Signal Crimson.
 Score Selector
-Botões 0,1,2,3,4,5,N/A. Selecionado em bordô.
+Botoes segmentados 0,1,2,3,4,5 para Pret CE core. Selecionado em Signal Crimson com texto branco. Legacy pode manter N/A quando aplicavel.
 Status Chip
 Pílula colorida: verde, âmbar ou vermelho conforme status.
+Checklist Stepper
+Marcadores circulares conectados por linha horizontal. Core 5/5 verde, 4/5 âmbar, 0-3/5 vermelho, não respondido neutro. Current step respondido preserva a cor do score e adiciona ring crimson. Bonus usa marcador de estrela: 5/5 dourado, 0/5 ou não respondido neutro.
 Photo Uploader
 Botão com ícone de foto, texto Add Photo e preview quando houver imagem.
 Progress Bar
-Track bege claro com preenchimento bordô.
+Track cinza claro com preenchimento Signal Crimson.
 Bottom Navigation
-Apenas em dashboards e áreas principais. Item ativo em bordô.
+Apenas quando necessario em dashboards e areas principais. Item ativo em Signal Crimson.
+Desktop Sidebar
+Dashboard desktop usa sidebar escura graphite com links claros, item ativo em Signal Crimson e Sign out integrado ao footer junto do bloco da conta.
 # 8. Navegação Principal
 - Login direciona o usuário para o dashboard correto conforme role.
 - Area Manager vê uma visão por área.
 - Store Manager e Leader veem a visão da própria loja.
 - Leader pode visualizar auditorias da própria loja para aprender e comparar.
 - A navegação inferior pode aparecer nos dashboards: Dashboard, Stores, Action Plans, Alerts, More.
-- Durante uma auditoria, usar navegação focada: Previous Section, Save Draft, Next Section.
+- Durante uma auditoria, usar navegação focada: Back, Save & Continue, Save & Review e Review & Complete. A navegação global deve aparecer como ações secundárias compactas para Dashboard e Audit History.
 # 9. Especificação das Telas
 ## Login Screen
 - Objetivo: entrada segura no app.
 - Elementos: logo checklist, título Audit Trainer, subtítulo, email, password, Sign In, Forgot Password, Internal access only.
 - Ação principal: Sign In.
-- Visual: centralizado, limpo, com card de login grande e fundo creme.
+- Visual: split layout em desktop, card de login forte, fundo cinza claro/branco e CTA Signal Crimson.
+- Password show/hide é um botão local seguro que não altera o submit.
+- Forgot password é placeholder seguro enquanto recuperação não estiver implementada.
 ## Area Manager Dashboard
 - Objetivo: ver performance da área, action plans e lojas com maior necessidade de foco.
 - Elementos: selector de área, Average Score, Stores, Open Action Plans, Critical Alerts, Store Performance, Priority Focus.
@@ -170,16 +189,17 @@ Apenas em dashboards e áreas principais. Item ativo em bordô.
 ## New Audit Screen
 - Objetivo: iniciar auditoria com dados corretos.
 - Campos: Store, Visit Date, Visit Time, MOD / Manager on Duty, Shift, Traffic Level, Visit Type, Initial Notes.
-- Ações: Start Audit e Save Draft.
+- Ação principal: Start Audit.
 - Validação: campos obrigatórios com mensagens em inglês.
 ## Checklist / Audit Execution
 - Objetivo: executar auditoria por seção de forma rápida.
-- Formato: uma seção por vez, todas as perguntas da seção abertas em cards.
-- Elementos por pergunta: score selector, comment, Add Photo, Critical Issue toggle.
-- Ações fixas: Previous Section, Save Draft, Next Section.
+- Formato: wizard mobile-first, uma pergunta por vez.
+- Elementos por pergunta: section label, pergunta, max score, score selector segmentado, optional notes.
+- Ações do card: Back e Save & Continue; no fim, Save & Review.
+- Stepper circular mostra progresso e score por pergunta.
 ## Review Audit Screen
 - Objetivo: revisar antes de finalizar.
-- Elementos: audit summary, score 76/95 · 80%, status, section breakdown, missing required questions, critical issues, photos attached.
+- Elementos: audit summary, score core + bonus como `88/95 + 5/5 bonus`, status, section breakdown, missing required questions, critical issues, photos attached.
 - Ações: Complete Audit e Back to Checklist.
 - Regra: bloquear conclusão se houver perguntas obrigatórias pendentes.
 ## Final Report + AI Action Plan
@@ -221,8 +241,8 @@ Figura 7: Final Report + AI Action Plan
 - Não alterar nome, cores principais ou estilo visual sem aprovação.
 - Manter todo o app em inglês.
 - Manter relatórios em inglês.
-- Usar fundo creme claro e cards com bordas suaves.
-- Usar bordô apenas como cor principal de marca e CTA.
+- Usar fundo cinza claro/branco e cards com bordas cinza suaves.
+- Usar Signal Crimson apenas como cor principal de marca e CTA.
 - Usar verde/amarelo/vermelho para status funcionais.
 - Criar componentes reutilizáveis antes de construir telas grandes.
 - Construir mobile-first e depois adaptar para desktop.
@@ -237,5 +257,5 @@ Figura 7: Final Report + AI Action Plan
 - O relatório final parece profissional e útil para treinamento.
 - A identidade visual permanece consistente em todas as telas.
 # 13. Resumo Final
-Audit Trainer deve ser um PWA interno, mobile-first, com visual SaaS moderno, fundo creme claro, cards limpos, bordô elegante como cor primária e relatórios em inglês focados em plano de ação. O objetivo do UI/UX é permitir que líderes e managers usem o app com rapidez dentro da loja, enquanto Admins e Area Managers conseguem enxergar performance, comparar lojas e acompanhar planos de melhoria.
+Audit Trainer deve ser um PWA interno, mobile-first, com identidade propria Graphite + Signal Crimson, visual de operations command center, superficies branco/cinza, cards premium, acoes primarias crimson com texto branco e relatórios em inglês focados em plano de ação. O objetivo do UI/UX é permitir que líderes e managers usem o app com rapidez dentro da loja, enquanto Admins e Area Managers conseguem enxergar performance, comparar lojas e acompanhar planos de melhoria.
 
