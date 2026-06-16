@@ -14,6 +14,17 @@ type AuditAccessRow = {
   store_id: string
   status: 'draft' | 'in_progress' | 'completed' | 'archived'
   is_locked: boolean
+  scoring_model_version?: string | null
+}
+
+type CompletedAuditCheckRow = {
+  id: string
+  status: AuditAccessRow['status']
+  is_locked: boolean
+  completed_at: string | null
+  total_score: number | string
+  max_score: number | string
+  section_scores: unknown
 }
 
 type StoreScopeRow = {
@@ -268,7 +279,7 @@ export async function saveAuditAnswerAction(
 
   const { data: audit, error: auditError } = await access.supabase
     .from('audits')
-    .select('id, store_id, status, is_locked')
+    .select('id, store_id, status, is_locked, scoring_model_version')
     .eq('id', auditId)
     .single<AuditAccessRow>()
 
@@ -358,17 +369,21 @@ export async function saveAuditAnswerAction(
     }
   }
 
-  revalidatePath(`/audits/${audit.id}`)
-
   return {
     status: 'success',
     message: 'Answer saved.',
+    answer: {
+      questionId: question.id,
+      score: scoreResult.score,
+      maxScore: question.max_score,
+      isNa,
+      comment: comment || null,
+    },
   }
 }
 
 export async function completeAuditAction(
-  _previousState: CompleteAuditState,
-  formData: FormData
+  auditId: string
 ): Promise<CompleteAuditState> {
   const access = await getSaveAnswerAccess(
     'You must be signed in to complete this audit.'
@@ -378,9 +393,9 @@ export async function completeAuditAction(
     return { status: 'error', message: access.error }
   }
 
-  const auditId = getText(formData, 'audit_id')
+  const trimmedAuditId = auditId.trim()
 
-  if (!auditId) {
+  if (!trimmedAuditId) {
     return {
       status: 'error',
       message: 'Audit not found or access denied.',
@@ -389,8 +404,8 @@ export async function completeAuditAction(
 
   const { data: audit, error: auditError } = await access.supabase
     .from('audits')
-    .select('id, store_id, status, is_locked')
-    .eq('id', auditId)
+    .select('id, store_id, status, is_locked, scoring_model_version')
+    .eq('id', trimmedAuditId)
     .single<AuditAccessRow>()
 
   if (auditError || !audit) {
@@ -427,11 +442,34 @@ export async function completeAuditAction(
     }
   }
 
+  const { data: completedAudit, error: completedAuditError } =
+    await access.supabase
+      .from('audits')
+      .select(
+        'id, status, is_locked, completed_at, total_score, max_score, section_scores'
+      )
+      .eq('id', audit.id)
+      .single<CompletedAuditCheckRow>()
+
+  if (completedAuditError || !completedAudit) {
+    return {
+      status: 'error',
+      message: 'Could not verify audit completion.',
+    }
+  }
+
+  if (completedAudit.status !== 'completed' || !completedAudit.is_locked) {
+    return {
+      status: 'error',
+      message: 'Audit completion did not persist.',
+    }
+  }
+
   revalidatePath(`/audits/${audit.id}`)
   revalidatePath('/audits')
 
   return {
     status: 'success',
-    message: 'Audit completed and locked.',
+    message: 'Audit completed successfully.',
   }
 }

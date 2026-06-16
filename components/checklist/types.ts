@@ -92,6 +92,13 @@ export type ScorePreview = {
 export type SaveAnswerState = {
   status: 'idle' | 'success' | 'error'
   message: string
+  answer?: {
+    questionId: string
+    score: number | null
+    maxScore: number
+    isNa: boolean
+    comment: string | null
+  }
 }
 
 export type CompleteAuditState = {

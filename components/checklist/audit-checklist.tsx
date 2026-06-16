@@ -1,13 +1,18 @@
 'use client'
 
-import Link from 'next/link'
-import { useActionState, useMemo, useState } from 'react'
+import {
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { useRouter } from 'next/navigation'
 
 import {
   completeAuditAction,
   saveAuditAnswerAction,
 } from '@/app/audits/[auditId]/actions'
 import {
+  ChecklistAnswer,
   ChecklistAudit,
   ChecklistQuestion,
   ChecklistSection,
@@ -24,38 +29,24 @@ type AuditChecklistProps = {
   scorePreview: ScorePreview
 }
 
-function formatStatus(status: string) {
-  return status
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
+type WizardMode = 'question' | 'review'
+
+type LocalAnswerMap = Record<string, ChecklistAnswer>
+
+type DraftAnswer = {
+  score: string
+  isNa: boolean
+  comment: string
 }
 
-function formatVisitType(value: string) {
-  return value
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
+type DraftAnswerMap = Record<string, DraftAnswer>
+
+type WizardPosition = {
+  mode: WizardMode
+  index: number
 }
 
-function formatScoreBand(value: string | null) {
-  if (!value) {
-    return 'Not finalized'
-  }
-
-  if (value === 'excellent') {
-    return 'Excellent / Bonus Standard'
-  }
-
-  return value
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
-function formatTime(value: string) {
-  return value.slice(0, 5)
-}
+type WizardState = WizardPosition
 
 function formatDateTime(value: string | null) {
   if (!value) {
@@ -77,12 +68,45 @@ function toNumber(value: number | string | null | undefined) {
   return Number(value)
 }
 
-function scoreLabel(preview: ScorePreview) {
-  if (preview.coreMaxScore === 0 || preview.percentage === null) {
-    return 'No scored answers yet'
+function isAnswered(question: ChecklistQuestion) {
+  return question.answer
+    ? question.answer.isNa || question.answer.score !== null
+    : false
+}
+
+function hasValidRequiredCoreAnswer(question: ChecklistQuestion) {
+  const score = question.answer?.score
+
+  return (
+    Boolean(question.answer) &&
+    question.answer?.isNa === false &&
+    typeof score === 'number' &&
+    Number.isFinite(score) &&
+    score >= 0 &&
+    score <= question.maxScore
+  )
+}
+
+function isRequiredCoreQuestion(question: ChecklistQuestion) {
+  return (
+    question.scoringModelVersion === 'pret_ce_v1' &&
+    question.scoringGroup === 'core' &&
+    question.requiredForCompletion
+  )
+}
+
+function sectionLabel(question: ChecklistQuestion) {
+  return question.scoringGroup === 'bonus'
+    ? 'Outstanding Card Bonus'
+    : 'Core Score'
+}
+
+function questionChipLabel(question: ChecklistQuestion) {
+  if (question.scoringGroup === 'bonus') {
+    return 'Bonus'
   }
 
-  return preview.combinedLabel
+  return String(question.displayNumber ?? question.orderIndex)
 }
 
 function persistedScoreLabel(audit: ChecklistAudit) {
@@ -100,6 +124,26 @@ function persistedScoreLabel(audit: ChecklistAudit) {
   return `${audit.totalScore}/${audit.maxScore} - ${audit.percentage}%`
 }
 
+function scoreLabel(preview: ScorePreview) {
+  if (preview.coreMaxScore === 0 || preview.percentage === null) {
+    return 'No scored answers yet'
+  }
+
+  return preview.combinedLabel
+}
+
+function statusTone(status: SaveAnswerState['status'] | CompleteAuditState['status']) {
+  if (status === 'success') {
+    return 'border-green-200 bg-green-50 text-green-800'
+  }
+
+  if (status === 'error') {
+    return 'border-red-200 bg-red-50 text-red-800'
+  }
+
+  return 'border-border bg-background text-muted'
+}
+
 function StatusMessage({
   state,
 }: {
@@ -109,101 +153,462 @@ function StatusMessage({
     return null
   }
 
-  const tone =
-    state.status === 'success'
-      ? 'border-green-200 bg-green-50 text-green-800'
-      : 'border-red-200 bg-red-50 text-red-800'
-
   return (
     <p
       aria-live="polite"
-      className={`rounded-lg border px-3 py-2 text-sm font-medium ${tone}`}
+      className={`rounded-lg border px-3 py-2 text-sm font-medium ${statusTone(
+        state.status
+      )}`}
     >
       {state.message}
     </p>
   )
 }
 
+function isRequiredCompletionMessage(message: string) {
+  return message === 'Please complete all required questions before finishing the audit.'
+}
+
+function initialAnswerMap(sections: ChecklistSection[]) {
+  return sections.reduce<LocalAnswerMap>((answers, section) => {
+    section.questions.forEach((question) => {
+      if (question.answer) {
+        answers[question.id] = question.answer
+      }
+    })
+
+    return answers
+  }, {})
+}
+
+function flattenQuestions(
+  sections: ChecklistSection[],
+  answers: LocalAnswerMap
+) {
+  return sections
+    .flatMap((section) =>
+      section.questions.map((question) => ({
+        ...question,
+        answer: answers[question.id] ?? question.answer,
+      }))
+    )
+    .sort((left, right) => {
+      if (left.scoringGroup !== right.scoringGroup) {
+        return left.scoringGroup === 'core' ? -1 : 1
+      }
+
+      const leftDisplay = left.displayNumber ?? left.orderIndex
+      const rightDisplay = right.displayNumber ?? right.orderIndex
+
+      if (leftDisplay !== rightDisplay) {
+        return leftDisplay - rightDisplay
+      }
+
+      return left.orderIndex - right.orderIndex
+    })
+}
+
+function initialDraftMap(questions: ChecklistQuestion[]) {
+  return questions.reduce<DraftAnswerMap>((drafts, question) => {
+    drafts[question.id] = {
+      score:
+        question.answer?.score === null || question.answer?.score === undefined
+          ? ''
+          : String(question.answer.score),
+      isNa: question.answer?.isNa ?? false,
+      comment: question.answer?.comment ?? '',
+    }
+
+    if (
+      question.scoringGroup === 'bonus' &&
+      question.responseType === 'boolean_score' &&
+      drafts[question.id].score === ''
+    ) {
+      drafts[question.id].score = '0'
+    }
+
+    return drafts
+  }, {})
+}
+
+function calculatePreview(questions: ChecklistQuestion[]): ScorePreview {
+  const coreQuestions = questions.filter(
+    (question) => question.scoringGroup === 'core'
+  )
+  const bonusQuestions = questions.filter(
+    (question) => question.scoringGroup === 'bonus'
+  )
+  const coreScoredQuestions = coreQuestions.filter(
+    (question) =>
+      question.answer && !question.answer.isNa && question.answer.score !== null
+  )
+  const bonusScoredQuestions = bonusQuestions.filter(
+    (question) =>
+      question.answer && !question.answer.isNa && question.answer.score !== null
+  )
+  const coreScore = coreScoredQuestions.reduce(
+    (total, question) => total + toNumber(question.answer?.score),
+    0
+  )
+  const coreMaxScore = coreQuestions.reduce(
+    (total, question) => total + toNumber(question.maxScore),
+    0
+  )
+  const legacyCoreMaxScore = coreScoredQuestions.reduce(
+    (total, question) => total + toNumber(question.maxScore),
+    0
+  )
+  const displayCoreMaxScore = coreMaxScore > 0 ? coreMaxScore : legacyCoreMaxScore
+  const bonusScore = bonusScoredQuestions.reduce(
+    (total, question) => total + toNumber(question.answer?.score),
+    0
+  )
+  const bonusMaxScore = bonusQuestions.reduce(
+    (total, question) => total + toNumber(question.maxScore),
+    0
+  )
+  const combinedLabel =
+    displayCoreMaxScore > 0
+      ? `${coreScore}/${displayCoreMaxScore} + ${bonusScore}/${bonusMaxScore} bonus`
+      : 'No scored answers yet'
+
+  return {
+    coreScore,
+    coreMaxScore: displayCoreMaxScore,
+    corePercentage:
+      displayCoreMaxScore > 0
+        ? Math.round((coreScore / displayCoreMaxScore) * 100)
+        : null,
+    bonusScore,
+    bonusMaxScore,
+    combinedLabel,
+    percentage:
+      displayCoreMaxScore > 0
+        ? Math.round((coreScore / displayCoreMaxScore) * 100)
+        : null,
+    answeredCount: coreScoredQuestions.length + bonusScoredQuestions.length,
+  }
+}
+
+function getInitialWizardPosition(
+  questions: ChecklistQuestion[]
+): WizardPosition {
+  const firstMissingCoreIndex = questions.findIndex(
+    (question) =>
+      isRequiredCoreQuestion(question) && !hasValidRequiredCoreAnswer(question)
+  )
+
+  if (firstMissingCoreIndex >= 0) {
+    return { mode: 'question', index: firstMissingCoreIndex }
+  }
+
+  const firstMissingBonusIndex = questions.findIndex(
+    (question) => question.scoringGroup === 'bonus' && !isAnswered(question)
+  )
+
+  if (firstMissingBonusIndex >= 0) {
+    return { mode: 'question', index: firstMissingBonusIndex }
+  }
+
+  return { mode: 'review', index: Math.max(questions.length - 1, 0) }
+}
+
+function buildSavedAnswer(
+  auditId: string,
+  currentAnswers: LocalAnswerMap,
+  state: NonNullable<SaveAnswerState['answer']>
+): ChecklistAnswer {
+  return {
+    id: currentAnswers[state.questionId]?.id ?? `${auditId}:${state.questionId}`,
+    auditId,
+    questionId: state.questionId,
+    score: state.score,
+    maxScore: state.maxScore,
+    isNa: state.isNa,
+    comment: state.comment,
+    isCriticalFlag: currentAnswers[state.questionId]?.isCriticalFlag ?? false,
+  }
+}
+
+function QuestionInput({
+  question,
+  draft,
+  readOnly,
+  onDraftChange,
+}: {
+  question: ChecklistQuestion
+  draft: DraftAnswer
+  readOnly: boolean
+  onDraftChange: (draft: DraftAnswer) => void
+}) {
+  const isPretQuestion = question.scoringModelVersion === 'pret_ce_v1'
+  const isBonusBoolean =
+    question.scoringGroup === 'bonus' &&
+    question.responseType === 'boolean_score'
+  const supportsNa = !isPretQuestion && question.scoringGroup !== 'bonus'
+  const effectiveIsNa = supportsNa && draft.isNa
+
+  if (isBonusBoolean) {
+    return (
+      <fieldset className="flex flex-col gap-3">
+        <legend className="text-sm font-semibold text-foreground">
+          Outstanding Card bonus
+        </legend>
+        <p className="text-sm leading-6 text-muted">
+          This bonus does not reduce the core score if it is not awarded.
+        </p>
+        <div className="grid gap-3">
+          {[
+            { label: 'No bonus / 0', value: '0' },
+            {
+              label: `Outstanding achieved / ${question.maxScore}`,
+              value: String(question.maxScore),
+            },
+          ].map((option) => {
+            const selected = draft.score === option.value
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                disabled={readOnly}
+                onClick={() => {
+                  onDraftChange({ ...draft, score: option.value })
+                }}
+                className={`min-h-12 rounded-lg border px-4 text-left text-sm font-semibold transition ${
+                  selected
+                    ? 'border-primary bg-primary text-white'
+                    : 'border-border bg-background text-foreground hover:border-primary hover:text-primary'
+                } disabled:cursor-not-allowed disabled:opacity-70`}
+              >
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
+      </fieldset>
+    )
+  }
+
+  return (
+    <>
+      <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
+        Score
+        <select
+          value={draft.score}
+          disabled={readOnly || effectiveIsNa}
+          onChange={(event) =>
+            onDraftChange({ ...draft, score: event.currentTarget.value })
+          }
+          className="min-h-12 rounded-lg border border-border bg-surface px-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-background disabled:text-muted"
+        >
+          <option value="">Select score</option>
+          {Array.from({ length: question.maxScore + 1 }, (_, score) => (
+            <option key={score} value={score}>
+              {score}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {supportsNa ? (
+        <label className="flex min-h-12 items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground">
+          <input
+            type="checkbox"
+            disabled={readOnly}
+            checked={draft.isNa}
+            onChange={(event) =>
+              onDraftChange({
+                ...draft,
+                isNa: event.currentTarget.checked,
+                score: event.currentTarget.checked ? '' : draft.score,
+              })
+            }
+            className="size-4 accent-primary"
+          />
+          Mark as N/A
+        </label>
+      ) : null}
+    </>
+  )
+}
+
 function ReviewCompleteCard({
   audit,
   readOnly,
+  questions,
+  answeredCoreCount,
+  requiredCoreCount,
+  missingRequiredCoreQuestions,
+  preview,
+  onQuestionSelect,
 }: {
   audit: ChecklistAudit
   readOnly: boolean
+  questions: ChecklistQuestion[]
+  answeredCoreCount: number
+  requiredCoreCount: number
+  missingRequiredCoreQuestions: ChecklistQuestion[]
+  preview: ScorePreview
+  onQuestionSelect: (index: number) => void
 }) {
-  const [state, formAction, isPending] = useActionState(
-    completeAuditAction,
+  const router = useRouter()
+  const [state, setState] = useState<CompleteAuditState>(
     initialCompleteAuditState
   )
   const [confirmed, setConfirmed] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false)
   const canComplete =
     !readOnly && (audit.status === 'draft' || audit.status === 'in_progress')
+  const hasMissingRequired = missingRequiredCoreQuestions.length > 0
+  const shouldShowCompletionState =
+    !isRequiredCompletionMessage(state.message) || hasMissingRequired
+
+  async function handleCompleteAudit() {
+    if (hasMissingRequired) {
+      setState({
+        status: 'error',
+        message: 'Please complete all required questions before finishing the audit.',
+      })
+      return
+    }
+
+    if (!confirmed) {
+      setState({
+        status: 'error',
+        message: 'Please confirm that you understand the audit will be locked.',
+      })
+      return
+    }
+
+    setIsCompleting(true)
+
+    try {
+      const result = await completeAuditAction(audit.id)
+      setState(result)
+
+      if (result.status === 'success') {
+        router.refresh()
+      }
+    } finally {
+      setIsCompleting(false)
+    }
+  }
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+    <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+      <div className="flex flex-col gap-4">
         <div>
-          <p className="text-sm font-semibold text-primary">
-            Review & Complete
-          </p>
+          <p className="text-sm font-semibold text-primary">Review & Complete</p>
           <h2 className="mt-2 text-2xl font-semibold text-foreground">
-            Finish this audit when the checklist is ready.
+            Ready to finish?
           </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-            Completion calculates the final score through the secure database
-            RPC, locks the audit, and makes completed audits read-only in the
-            normal app flow. Unanswered required questions will block
-            completion.
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Review the score, jump back to any missing question, then complete
+            the audit when everything is ready.
           </p>
         </div>
 
-        <div className="rounded-xl border border-border bg-background p-4 lg:min-w-72">
-          <p className="text-xs font-semibold text-muted">Persisted score</p>
-          <p className="mt-1 text-lg font-semibold text-foreground">
-            {persistedScoreLabel(audit)}
-          </p>
-          <p className="mt-2 text-xs font-semibold text-muted">Rating</p>
-          <p className="mt-1 text-sm font-semibold text-foreground">
-            {formatScoreBand(audit.scoreBand)}
-          </p>
-          {audit.completedAt ? (
-            <>
-              <p className="mt-2 text-xs font-semibold text-muted">
-                Completed
-              </p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
-                {formatDateTime(audit.completedAt)}
-              </p>
-            </>
-          ) : null}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-border bg-background p-3">
+            <p className="text-xs font-semibold text-muted">Core answered</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">
+              {answeredCoreCount}/{requiredCoreCount}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-background p-3">
+            <p className="text-xs font-semibold text-muted">Missing required</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">
+              {missingRequiredCoreQuestions.length}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-background p-3">
+            <p className="text-xs font-semibold text-muted">
+              {audit.maxScore > 0 ? 'Final score' : 'Preview'}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              {audit.maxScore > 0 ? persistedScoreLabel(audit) : scoreLabel(preview)}
+            </p>
+          </div>
         </div>
+
+        {missingRequiredCoreQuestions.length > 0 ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
+            <p className="text-sm font-semibold">
+              Complete these required questions first:
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {missingRequiredCoreQuestions.map((question) => {
+                const questionIndex = questions.findIndex(
+                  (item) => item.id === question.id
+                )
+
+                return (
+                  <button
+                    key={question.id}
+                    type="button"
+                    onClick={() => {
+                      onQuestionSelect(questionIndex)
+                    }}
+                    className="min-h-10 rounded-lg border border-amber-300 bg-white px-3 text-sm font-semibold text-amber-900"
+                  >
+                    {questionChipLabel(question)}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {audit.completedAt ? (
+          <div className="rounded-xl border border-border bg-background p-3">
+            <p className="text-xs font-semibold text-muted">Completed</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              {formatDateTime(audit.completedAt)}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       {canComplete ? (
-        <form action={formAction} className="mt-5 flex flex-col gap-4">
-          <input type="hidden" name="audit_id" value={audit.id} />
+        <div className="mt-5 flex flex-col gap-4">
+          {hasMissingRequired ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-medium leading-6 text-amber-900">
+              Completion is locked until every required core question is
+              answered.
+            </div>
+          ) : (
+            <>
+              <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-medium leading-6 text-amber-900">
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  onChange={(event) => setConfirmed(event.currentTarget.checked)}
+                  className="mt-1 size-4 accent-primary"
+                />
+                I understand this will calculate the final score and lock the
+                audit.
+              </label>
 
-          <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-medium leading-6 text-amber-900">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(event) => setConfirmed(event.currentTarget.checked)}
-              className="mt-1 size-4 accent-primary"
-            />
-            I understand this will calculate the final score and lock the
-            audit.
-          </label>
+              {!confirmed ? (
+                <div className="rounded-lg border border-border bg-background px-3 py-3 text-sm font-medium text-muted">
+                  Please confirm that you understand the audit will be locked.
+                </div>
+              ) : null}
+            </>
+          )}
 
-          <StatusMessage state={state} />
+          {shouldShowCompletionState ? <StatusMessage state={state} /> : null}
 
           <button
-            type="submit"
-            disabled={!confirmed || isPending}
-            className="min-h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-muted"
+            type="button"
+            disabled={!confirmed || hasMissingRequired || isCompleting}
+            onClick={handleCompleteAudit}
+            className="min-h-12 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-muted"
           >
-            {isPending ? 'Completing...' : 'Complete audit'}
+            {isCompleting ? 'Completing...' : 'Complete Audit'}
           </button>
-        </form>
+        </div>
       ) : (
         <div className="mt-5 rounded-lg border border-border bg-background px-3 py-3 text-sm font-medium text-muted">
           This audit is completed or locked. Completion actions are unavailable.
@@ -213,273 +618,233 @@ function ReviewCompleteCard({
   )
 }
 
-function QuestionCard({
-  auditId,
-  question,
-  readOnly,
-}: {
-  auditId: string
-  question: ChecklistQuestion
-  readOnly: boolean
-}) {
-  const [state, formAction, isPending] = useActionState(
-    saveAuditAnswerAction,
-    initialSaveAnswerState
-  )
-  const [isNa, setIsNa] = useState(question.answer?.isNa ?? false)
-  const currentScore = question.answer?.score
-  const isPretQuestion = question.scoringModelVersion === 'pret_ce_v1'
-  const isBonusBoolean =
-    question.scoringGroup === 'bonus' &&
-    question.responseType === 'boolean_score'
-  const supportsNa = !isPretQuestion && question.scoringGroup !== 'bonus'
-  const effectiveIsNa = supportsNa && isNa
-  const displayPrefix = question.displayNumber
-    ? `${question.displayNumber}. `
-    : ''
-
-  return (
-    <article className="rounded-2xl border border-border bg-white p-4 shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex flex-wrap gap-2">
-            {question.isRequired ? (
-              <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
-                Required
-              </span>
-            ) : (
-              <span className="rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
-                Optional
-              </span>
-            )}
-            {question.isCritical ? (
-              <span className="rounded-full border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
-                Critical
-              </span>
-            ) : null}
-            <span className="rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
-              {question.scoringGroup === 'bonus' ? 'Bonus' : 'Core Score'}
-            </span>
-          </div>
-          <h3 className="mt-3 text-base font-semibold leading-6 text-foreground">
-            {displayPrefix}
-            {question.questionText}
-          </h3>
-          {question.questionDescription ? (
-            <p className="mt-2 text-sm leading-6 text-muted">
-              {question.questionDescription}
-            </p>
-          ) : null}
-        </div>
-        <p className="shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground">
-          Max {question.maxScore}
-        </p>
-      </div>
-
-      <form action={formAction} className="mt-4 flex flex-col gap-4">
-        <input type="hidden" name="audit_id" value={auditId} />
-        <input type="hidden" name="question_id" value={question.id} />
-
-        {isBonusBoolean ? (
-          <fieldset className="flex flex-col gap-3">
-            <legend className="text-sm font-semibold text-foreground">
-              Outstanding Card bonus
-            </legend>
-            <p className="text-sm leading-6 text-muted">
-              This bonus does not reduce the core score if it is not awarded.
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex min-h-11 items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground">
-                <input
-                  name="score"
-                  type="radio"
-                  value="0"
-                  disabled={readOnly}
-                  defaultChecked={currentScore === 0 || currentScore == null}
-                  className="size-4 accent-primary"
-                />
-                No bonus / 0
-              </label>
-              <label className="flex min-h-11 items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground">
-                <input
-                  name="score"
-                  type="radio"
-                  value={question.maxScore}
-                  disabled={readOnly}
-                  defaultChecked={currentScore === question.maxScore}
-                  className="size-4 accent-primary"
-                />
-                Outstanding achieved / {question.maxScore}
-              </label>
-            </div>
-          </fieldset>
-        ) : (
-          <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
-            Score
-            <input
-              name="score"
-              type="number"
-              min={0}
-              max={question.maxScore}
-              step="1"
-              disabled={readOnly || effectiveIsNa}
-              defaultValue={currentScore ?? ''}
-              placeholder={`0-${question.maxScore}`}
-              className="min-h-11 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-background disabled:text-muted"
-            />
-          </label>
-        )}
-
-        {supportsNa ? (
-          <label className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground">
-            <input
-              name="is_na"
-              type="checkbox"
-              disabled={readOnly}
-              defaultChecked={isNa}
-              onChange={(event) => setIsNa(event.currentTarget.checked)}
-              className="size-4 accent-primary"
-            />
-            Mark as N/A
-          </label>
-        ) : null}
-
-        <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
-          Notes
-          <textarea
-            name="comment"
-            rows={3}
-            disabled={readOnly}
-            defaultValue={question.answer?.comment ?? ''}
-            placeholder="Optional notes"
-            className="rounded-lg border border-border bg-surface px-3 py-3 text-sm font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-background disabled:text-muted"
-          />
-        </label>
-
-        <StatusMessage state={state} />
-
-        {readOnly ? (
-          <p className="rounded-lg border border-border bg-background px-3 py-3 text-sm font-medium text-muted">
-            This audit is read-only. Completed or locked audits cannot be edited
-            in the normal app flow.
-          </p>
-        ) : (
-          <button
-            type="submit"
-            disabled={isPending}
-            className="min-h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-muted"
-          >
-            {isPending ? 'Saving...' : 'Save answer'}
-          </button>
-        )}
-      </form>
-    </article>
-  )
-}
-
 export function AuditChecklist({
   audit,
   sections,
   scorePreview,
 }: AuditChecklistProps) {
-  const [activeSectionIndex, setActiveSectionIndex] = useState(0)
+  const initialAnswers = useMemo(() => initialAnswerMap(sections), [sections])
+  const initialQuestions = useMemo(
+    () => flattenQuestions(sections, initialAnswers),
+    [sections, initialAnswers]
+  )
+  const initialPosition = useMemo(
+    () => getInitialWizardPosition(initialQuestions),
+    [initialQuestions]
+  )
+  const [answers, setAnswers] = useState<LocalAnswerMap>(initialAnswers)
+  const [drafts, setDrafts] = useState<DraftAnswerMap>(() =>
+    initialDraftMap(initialQuestions)
+  )
+  const [wizard, setWizard] = useState<WizardState>(initialPosition)
+  const [saveState, setSaveState] =
+    useState<SaveAnswerState>(initialSaveAnswerState)
+  const [isSaving, setIsSaving] = useState(false)
+  const questionCardRef = useRef<HTMLDivElement>(null)
   const readOnly =
     audit.isLocked ||
     audit.status === 'completed' ||
     audit.status === 'archived'
-  const activeSection = sections[activeSectionIndex] ?? null
-  const answeredTotal = useMemo(
-    () =>
-      sections.reduce(
-        (total, section) =>
-          total +
-          section.questions.filter(
-            (question) =>
-              question.answer
-                ? question.answer.isNa || question.answer.score !== null
-                : false
-          ).length,
-        0
-      ),
-    [sections]
+  const questions = useMemo(
+    () => flattenQuestions(sections, answers),
+    [sections, answers]
   )
-  const questionTotal = useMemo(
-    () =>
-      sections.reduce((total, section) => total + section.questions.length, 0),
-    [sections]
+  const boundedStepIndex =
+    questions.length > 0
+      ? Math.min(wizard.index, questions.length - 1)
+      : 0
+  const currentQuestion = questions[boundedStepIndex] ?? null
+  const preview = useMemo(
+    () => (questions.length > 0 ? calculatePreview(questions) : scorePreview),
+    [questions, scorePreview]
   )
+  const answeredTotal = questions.filter((question) => isAnswered(question)).length
+  const requiredCoreQuestions = questions.filter((question) =>
+    isRequiredCoreQuestion(question)
+  )
+  const missingRequiredCoreQuestions = requiredCoreQuestions.filter(
+    (question) => !hasValidRequiredCoreAnswer(question)
+  )
+  const answeredCoreCount =
+    requiredCoreQuestions.length - missingRequiredCoreQuestions.length
+  const progressValue =
+    questions.length > 0
+      ? Math.round((answeredTotal / questions.length) * 100)
+      : 0
+  const currentDraft =
+    currentQuestion &&
+    (drafts[currentQuestion.id] ??
+      initialDraftMap([currentQuestion])[currentQuestion.id])
+
+  function scrollQuestionIntoView() {
+    window.setTimeout(() => {
+      questionCardRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+    }, 0)
+  }
+
+  function handleJumpToStep(index: number) {
+    const nextIndex = Math.max(0, Math.min(index, questions.length - 1))
+
+    if (questions.length === 0) {
+      return
+    }
+
+    setWizard({ mode: 'question', index: nextIndex })
+    setSaveState(initialSaveAnswerState)
+    scrollQuestionIntoView()
+  }
+
+  function handleBack() {
+    if (boundedStepIndex <= 0) {
+      return
+    }
+
+    const nextIndex = boundedStepIndex - 1
+
+    setWizard({ mode: 'question', index: nextIndex })
+    setSaveState(initialSaveAnswerState)
+    scrollQuestionIntoView()
+  }
+
+  function updateDraft(questionId: string, draft: DraftAnswer) {
+    setDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [questionId]: draft,
+    }))
+  }
+
+  async function handleSaveAndContinue() {
+    if (!currentQuestion || readOnly) {
+      return
+    }
+
+    const draft = currentDraft
+
+    if (!draft) {
+      return
+    }
+
+    const savedQuestionId = currentQuestion.id
+    const nextStepIndex = boundedStepIndex + 1
+    const formData = new FormData()
+
+    formData.set('audit_id', audit.id)
+    formData.set('question_id', savedQuestionId)
+    formData.set('score', draft.score)
+    formData.set('comment', draft.comment)
+
+    if (draft.isNa) {
+      formData.set('is_na', 'on')
+    }
+
+    setIsSaving(true)
+
+    try {
+      const result = await saveAuditAnswerAction(initialSaveAnswerState, formData)
+      setSaveState(result)
+
+      if (result.status !== 'success' || !result.answer) {
+        return
+      }
+
+      setAnswers((currentAnswers) => ({
+        ...currentAnswers,
+        [result.answer!.questionId]: buildSavedAnswer(
+          audit.id,
+          currentAnswers,
+          result.answer!
+        ),
+      }))
+      setDrafts((currentDrafts) => ({
+        ...currentDrafts,
+        [result.answer!.questionId]: {
+          score: result.answer!.score === null ? '' : String(result.answer!.score),
+          isNa: result.answer!.isNa,
+          comment: result.answer!.comment ?? '',
+        },
+      }))
+
+      if (nextStepIndex < questions.length) {
+        setWizard({ mode: 'question', index: nextStepIndex })
+      } else {
+        setWizard({ mode: 'review', index: boundedStepIndex })
+      }
+
+      scrollQuestionIntoView()
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
-    <main className="min-h-screen bg-background">
-      <header className="border-b border-border bg-surface/90 px-4 py-4 shadow-sm">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
-              AT
-            </div>
+    <main className="relative z-10 pointer-events-auto bg-background">
+      <section className="relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 sm:px-6">
+        <section className="sticky top-0 z-30 rounded-b-2xl border border-t-0 border-border bg-surface/95 p-4 shadow-sm backdrop-blur">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-lg font-semibold text-foreground">
-                Audit Trainer
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                {wizard.mode === 'review'
+                  ? 'Review'
+                  : currentQuestion
+                    ? `Question ${boundedStepIndex + 1} of ${questions.length}`
+                    : 'Checklist'}
               </p>
-              <p className="text-xs font-medium text-muted">Checklist</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {audit.maxScore > 0
+                  ? persistedScoreLabel(audit)
+                  : scoreLabel(preview)}
+              </p>
+              <p className="mt-1 text-xs font-medium text-muted">
+                {answeredTotal}/{questions.length} answered
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground">
+              {progressValue}%
             </div>
           </div>
 
-          <Link
-            href="/dashboard"
-            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          <div
+            aria-hidden="true"
+            className="mt-3 h-2 overflow-hidden rounded-full bg-background"
           >
-            Back to dashboard
-          </Link>
-        </div>
-      </header>
-
-      <section className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-primary">
-                {audit.store.name} ({audit.store.code})
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold text-foreground">
-                Store audit checklist
-              </h1>
-              <p className="mt-3 text-sm leading-6 text-muted">
-                {audit.visitDate} at {formatTime(audit.visitTime)} -{' '}
-                {formatVisitType(audit.visitType)}
-              </p>
-              {audit.mod ? (
-                <p className="mt-1 text-sm leading-6 text-muted">
-                  MOD: {audit.mod}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3 lg:min-w-96">
-              <div className="rounded-xl border border-border bg-background p-3">
-                <p className="text-xs font-semibold text-muted">Status</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {formatStatus(audit.status)}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border bg-background p-3">
-                <p className="text-xs font-semibold text-muted">Lock state</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {audit.isLocked ? 'Locked' : 'Unlocked'}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border bg-background p-3">
-                <p className="text-xs font-semibold text-muted">
-                  {audit.maxScore > 0 ? 'Final score' : 'Score preview'}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {audit.maxScore > 0
-                    ? persistedScoreLabel(audit)
-                    : scoreLabel(scorePreview)}
-                </p>
-              </div>
-            </div>
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${progressValue}%` }}
+            />
           </div>
+
+          {questions.length > 0 ? (
+            <nav aria-label="Jump to question" className="mt-3">
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {questions.map((question, index) => {
+                  const active =
+                    wizard.mode === 'question' && index === boundedStepIndex
+                  const answered = isAnswered(question)
+
+                  return (
+                    <button
+                      key={question.id}
+                      type="button"
+                      onClick={() => handleJumpToStep(index)}
+                      className={`min-h-9 shrink-0 rounded-lg border px-3 text-xs font-semibold transition ${
+                        active
+                          ? 'border-primary bg-primary text-white'
+                          : answered
+                            ? 'border-green-200 bg-green-50 text-green-800'
+                            : 'border-border bg-background text-foreground hover:border-primary hover:text-primary'
+                      }`}
+                      aria-current={active ? 'step' : undefined}
+                    >
+                      {questionChipLabel(question)}
+                    </button>
+                  )
+                })}
+              </div>
+            </nav>
+          ) : null}
         </section>
 
         {readOnly ? (
@@ -492,117 +857,142 @@ export function AuditChecklist({
           </section>
         ) : null}
 
-        <section className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
-            <p className="text-sm font-medium text-muted">Answered</p>
-            <p className="mt-2 text-xl font-semibold text-foreground">
-              {answeredTotal}/{questionTotal}
+        {audit.scoringModelVersion === 'legacy_62_v1' ? (
+          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 shadow-sm">
+            <p className="text-sm font-semibold">Legacy checklist model</p>
+            <p className="mt-2 text-sm leading-6">
+              This audit was created with the legacy checklist model. Start a
+              new audit to use the Pret CE V1 checklist.
             </p>
-          </div>
-          <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
-            <p className="text-sm font-medium text-muted">Scored answers</p>
-            <p className="mt-2 text-xl font-semibold text-foreground">
-              {scorePreview.answeredCount}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
-            <p className="text-sm font-medium text-muted">
-              {audit.maxScore > 0 ? 'Final rating' : 'Preview only'}
-            </p>
-            <p className="mt-2 text-xl font-semibold text-foreground">
-              {audit.maxScore > 0 ? formatScoreBand(audit.scoreBand) : 'Not persisted'}
-            </p>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
-        <ReviewCompleteCard audit={audit} readOnly={readOnly} />
-
-        <nav
-          aria-label="Checklist sections"
-          className="flex gap-2 overflow-x-auto pb-1"
+        <div
+          ref={questionCardRef}
+          className="relative z-10 pointer-events-auto"
         >
-          {sections.map((section, index) => {
-            const isActive = index === activeSectionIndex
+          {wizard.mode === 'review' ? (
+            <ReviewCompleteCard
+              audit={audit}
+              readOnly={readOnly}
+              questions={questions}
+              answeredCoreCount={answeredCoreCount}
+              requiredCoreCount={requiredCoreQuestions.length}
+              missingRequiredCoreQuestions={missingRequiredCoreQuestions}
+              preview={preview}
+              onQuestionSelect={handleJumpToStep}
+            />
+          ) : currentQuestion ? (
+            <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+              <article className="rounded-2xl border border-border bg-white p-4 shadow-sm">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
+                      {sectionLabel(currentQuestion)}
+                    </span>
+                    {currentQuestion.isRequired ? (
+                      <span className="rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
+                        Required
+                      </span>
+                    ) : (
+                      <span className="rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
+                        Optional
+                      </span>
+                    )}
+                    <span className="rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
+                      Max {currentQuestion.maxScore}
+                    </span>
+                  </div>
 
-            return (
-              <button
-                key={section.id}
-                type="button"
-                onClick={() => setActiveSectionIndex(index)}
-                className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                  isActive
-                    ? 'border-primary bg-primary text-white'
-                    : 'border-border bg-surface text-foreground hover:border-primary hover:text-primary'
-                }`}
-              >
-                {index + 1}. {section.title}
-              </button>
-            )
-          })}
-        </nav>
+                  <h2 className="text-xl font-semibold leading-7 text-foreground">
+                    {currentQuestion.displayNumber
+                      ? `${currentQuestion.displayNumber}. `
+                      : ''}
+                    {currentQuestion.questionText}
+                  </h2>
 
-        {activeSection ? (
-          <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-primary">
-                  Section {activeSectionIndex + 1} of {sections.length}
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold text-foreground">
-                  {activeSection.title}
-                </h2>
-                {activeSection.description ? (
-                  <p className="mt-2 text-sm leading-6 text-muted">
-                    {activeSection.description}
-                  </p>
-                ) : null}
-              </div>
-              <p className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-muted">
-                {activeSection.questions.length} questions
-              </p>
-            </div>
+                  {currentQuestion.questionDescription ? (
+                    <p className="text-sm leading-6 text-muted">
+                      {currentQuestion.questionDescription}
+                    </p>
+                  ) : null}
+                </div>
 
-            <div className="mt-5 grid gap-4">
-              {activeSection.questions.map((question) => (
-                <QuestionCard
-                  key={question.id}
-                  auditId={audit.id}
-                  question={question}
-                  readOnly={readOnly}
-                />
-              ))}
-            </div>
+                <div className="mt-5 flex flex-col gap-4">
+                  <QuestionInput
+                    question={currentQuestion}
+                    draft={currentDraft}
+                    readOnly={readOnly}
+                    onDraftChange={(draft) =>
+                      updateDraft(currentQuestion.id, draft)
+                    }
+                  />
 
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-between">
-              <button
-                type="button"
-                disabled={activeSectionIndex === 0}
-                onClick={() =>
-                  setActiveSectionIndex((index) => Math.max(index - 1, 0))
-                }
-                className="min-h-11 rounded-lg border border-border bg-white px-5 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:text-muted"
-              >
-                Previous section
-              </button>
-              <button
-                type="button"
-                disabled={activeSectionIndex === sections.length - 1}
-                onClick={() =>
-                  setActiveSectionIndex((index) =>
-                    Math.min(index + 1, sections.length - 1)
-                  )
-                }
-                className="min-h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-muted"
-              >
-                Next section
-              </button>
-            </div>
-          </section>
-        ) : (
-          <section className="rounded-2xl border border-border bg-surface p-5 text-muted shadow-sm">
-            No active checklist sections are available.
-          </section>
-        )}
+                  <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
+                    Notes
+                    <textarea
+                      rows={4}
+                      disabled={readOnly}
+                      value={
+                        drafts[currentQuestion.id]?.comment ??
+                        currentQuestion.answer?.comment ??
+                        ''
+                      }
+                      onChange={(event) =>
+                        updateDraft(currentQuestion.id, {
+                          ...(drafts[currentQuestion.id] ??
+                            initialDraftMap([currentQuestion])[
+                              currentQuestion.id
+                            ]),
+                          comment: event.currentTarget.value,
+                        })
+                      }
+                      placeholder="Optional notes"
+                      className="rounded-lg border border-border bg-surface px-3 py-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-background disabled:text-muted"
+                    />
+                  </label>
+
+                  <StatusMessage state={saveState} />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      disabled={boundedStepIndex === 0}
+                      onClick={handleBack}
+                      className="min-h-12 rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:text-muted"
+                    >
+                      Back
+                    </button>
+
+                    {readOnly ? (
+                      <div className="min-h-12 rounded-lg border border-border bg-background px-4 py-3 text-center text-sm font-semibold text-muted">
+                        Read-only
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={handleSaveAndContinue}
+                        className="min-h-12 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-muted"
+                      >
+                        {isSaving
+                          ? 'Saving...'
+                          : boundedStepIndex === questions.length - 1
+                            ? 'Save & Review'
+                            : 'Save & Continue'}
+                      </button>
+                    )}
+                  </div>
+
+                </div>
+              </article>
+            </section>
+          ) : (
+            <section className="rounded-2xl border border-border bg-surface p-5 text-muted shadow-sm">
+              No active checklist questions are available.
+            </section>
+          )}
+        </div>
       </section>
     </main>
   )
