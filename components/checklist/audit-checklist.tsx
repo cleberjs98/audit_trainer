@@ -5,8 +5,10 @@ import {
   useRef,
   useState,
 } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
+import { createActionPlanForAuditAction } from '@/app/action-plans/actions'
 import {
   completeAuditAction,
   saveAuditAnswerAction,
@@ -27,6 +29,11 @@ type AuditChecklistProps = {
   audit: ChecklistAudit
   sections: ChecklistSection[]
   scorePreview: ScorePreview
+  actionPlan: {
+    id: string
+    status: 'open' | 'in_progress' | 'completed'
+  } | null
+  canManageActionPlans: boolean
 }
 
 type WizardMode = 'question' | 'review'
@@ -162,6 +169,103 @@ function StatusMessage({
     >
       {state.message}
     </p>
+  )
+}
+
+function ActionPlanAuditCallout({
+  audit,
+  actionPlan,
+  canManageActionPlans,
+}: {
+  audit: ChecklistAudit
+  actionPlan: AuditChecklistProps['actionPlan']
+  canManageActionPlans: boolean
+}) {
+  const router = useRouter()
+  const [state, setState] = useState<CompleteAuditState>({
+    status: 'idle',
+    message: '',
+  })
+  const [isCreating, setIsCreating] = useState(false)
+
+  if (audit.status !== 'completed') {
+    return (
+      <section className="rounded-2xl border border-border bg-surface p-4 text-sm text-muted shadow-sm">
+        Action plans become available after audit completion.
+      </section>
+    )
+  }
+
+  if (actionPlan) {
+    return (
+      <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-primary">Action Plan</p>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              This completed audit already has a manual action plan.
+            </p>
+          </div>
+          <Link
+            href={`/action-plans/${actionPlan.id}`}
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            View Action Plan
+          </Link>
+        </div>
+      </section>
+    )
+  }
+
+  if (!canManageActionPlans) {
+    return (
+      <section className="rounded-2xl border border-border bg-surface p-4 text-sm text-muted shadow-sm">
+        No action plan has been created yet. Leaders can view action plans once
+        they are available.
+      </section>
+    )
+  }
+
+  async function handleCreateActionPlan() {
+    setIsCreating(true)
+
+    try {
+      const result = await createActionPlanForAuditAction(audit.id)
+      setState({
+        status: result.status,
+        message: result.message,
+      })
+
+      if (result.status === 'success' && result.actionPlanId) {
+        router.push(`/action-plans/${result.actionPlanId}`)
+      }
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-primary">Action Plan</p>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Create a manual follow-up plan for this completed audit.
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={isCreating}
+          onClick={handleCreateActionPlan}
+          className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted"
+        >
+          {isCreating ? 'Creating...' : 'Create Action Plan'}
+        </button>
+      </div>
+      <div className="mt-3">
+        <StatusMessage state={state} />
+      </div>
+    </section>
   )
 }
 
@@ -622,6 +726,8 @@ export function AuditChecklist({
   audit,
   sections,
   scorePreview,
+  actionPlan,
+  canManageActionPlans,
 }: AuditChecklistProps) {
   const initialAnswers = useMemo(() => initialAnswerMap(sections), [sections])
   const initialQuestions = useMemo(
@@ -866,6 +972,12 @@ export function AuditChecklist({
             </p>
           </section>
         ) : null}
+
+        <ActionPlanAuditCallout
+          audit={audit}
+          actionPlan={actionPlan}
+          canManageActionPlans={canManageActionPlans}
+        />
 
         <div
           ref={questionCardRef}

@@ -75,6 +75,11 @@ type AnswerRow = {
   is_critical_flag: boolean
 }
 
+type ActionPlanSummaryRow = {
+  id: string
+  status: 'open' | 'in_progress' | 'completed'
+}
+
 function toNumber(value: number | string | null | undefined) {
   if (value === null || value === undefined) {
     return 0
@@ -295,7 +300,12 @@ export default async function AuditDetailPage({
     return <AuditAccessFallback />
   }
 
-  const [{ data: sectionRows }, { data: questionRows }, { data: answerRows }] =
+  const [
+    { data: sectionRows },
+    { data: questionRows },
+    { data: answerRows },
+    { data: actionPlan },
+  ] =
     await Promise.all([
       supabase
         .from('checklist_sections')
@@ -319,6 +329,11 @@ export default async function AuditDetailPage({
         )
         .eq('audit_id', audit.id)
         .returns<AnswerRow[]>(),
+      supabase
+        .from('action_plans')
+        .select('id, status')
+        .eq('audit_id', audit.id)
+        .maybeSingle<ActionPlanSummaryRow>(),
     ])
 
   const sections = buildSections(
@@ -333,6 +348,8 @@ export default async function AuditDetailPage({
       audit={toChecklistAudit(audit, store)}
       sections={sections}
       scorePreview={scorePreview}
+      actionPlan={actionPlan ?? null}
+      canManageActionPlans={profile.role !== 'leader'}
     />
   )
 }

@@ -49,9 +49,10 @@ function getDashboardCards(profile: ProfileRow): DashboardCard[] {
     {
       title: 'Action Plans',
       description:
-        'Track follow-up actions generated from completed store audits.',
-      action: 'Coming soon',
-      note: 'Placeholder',
+        'Track manual follow-up actions created from completed store audits.',
+      action: 'Open Action Plans',
+      note: 'Available',
+      href: '/action-plans',
     },
   ]
 
