@@ -54,6 +54,28 @@ This document records which parts are deliberately simple for V1, why that is ac
 - Score preview is calculated in the app from loaded answers before completion.
 - Completed audits show the persisted final score from `audits`.
 - Answer snapshots and `max_score` are trusted from the database on the server side.
+- The Pret CE V1 guided checklist flow has been validated on local desktop.
+
+### Mobile QA Note
+
+- Local mobile testing over a LAN/IP Next.js dev server is not the source of truth for final mobile behavior.
+- During local development, phone testing can be unreliable because of dev-server HMR, cache, and local network behavior.
+- Pret CE V1 guided flow should not be blocked on local phone testing when local desktop validation passes.
+- Final mobile QA must happen after deployment on a real HTTPS URL.
+
+Required post-deploy mobile test checklist:
+
+1. Login.
+2. Start New Audit.
+3. Guided checklist opens at the first unanswered question.
+4. Question chips navigate between questions.
+5. Back works.
+6. Save & Continue saves and advances.
+7. Closing and reopening the audit resumes at the first unanswered question.
+8. Outstanding Card accepts only 0/5.
+9. Review shows core + bonus score.
+10. Complete Audit locks the audit.
+11. Audit History shows the completed score.
 
 ### Review / Complete Audit V1
 
