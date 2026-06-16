@@ -7,7 +7,7 @@ import {
 import { MissingProfileDashboard } from '@/components/dashboard/dashboard-shell'
 import { isUserRole, type ProfileRow } from '@/lib/auth/profile'
 import { createClient } from '@/lib/supabase/server'
-import type { AuditStatus } from '@/types/audit'
+import type { AuditScoreBand, AuditStatus } from '@/types/audit'
 
 const AUDIT_STATUSES = [
   'draft',
@@ -15,6 +15,13 @@ const AUDIT_STATUSES = [
   'completed',
   'archived',
 ] as const satisfies readonly AuditStatus[]
+
+const AUDIT_SCORE_BANDS = [
+  'excellent',
+  'good',
+  'needs_focus',
+  'critical',
+] as const satisfies readonly AuditScoreBand[]
 
 type AuditRow = {
   id: string
@@ -27,9 +34,11 @@ type AuditRow = {
   total_score: number | string
   max_score: number | string
   percentage: number | string
+  score_band: AuditScoreBand | null
   section_scores: AuditHistoryItem['sectionScores']
   scoring_model_version: string | null
   created_at: string
+  completed_at: string | null
 }
 
 type StoreRow = {
@@ -52,12 +61,20 @@ type CreatorRow = {
 
 type AuditHistoryPageProps = {
   searchParams: Promise<{
-    status?: string | string[]
-  }>
+  status?: string | string[]
+  score_band?: string | string[]
+  q?: string | string[]
+}>
 }
 
 function isAuditStatus(value: string | undefined): value is AuditStatus {
   return AUDIT_STATUSES.includes(value as AuditStatus)
+}
+
+function isAuditScoreBand(
+  value: string | undefined
+): value is AuditScoreBand {
+  return AUDIT_SCORE_BANDS.includes(value as AuditScoreBand)
 }
 
 function firstParam(value: string | string[] | undefined) {
@@ -103,9 +120,11 @@ function buildAuditItems(
       totalScore: toNumber(audit.total_score),
       maxScore: toNumber(audit.max_score),
       percentage: toNumber(audit.percentage),
+      scoreBand: audit.score_band,
       sectionScores: audit.section_scores,
       scoringModelVersion: audit.scoring_model_version ?? 'legacy_62_v1',
       createdAt: audit.created_at,
+      completedAt: audit.completed_at,
     }
   })
 }
@@ -115,7 +134,12 @@ export default async function AuditHistoryPage({
 }: AuditHistoryPageProps) {
   const params = await searchParams
   const statusFilter = firstParam(params.status)
+  const scoreBandFilter = firstParam(params.score_band)
+  const searchQuery = firstParam(params.q)?.trim() ?? ''
   const activeStatus = isAuditStatus(statusFilter) ? statusFilter : null
+  const activeScoreBand = isAuditScoreBand(scoreBandFilter)
+    ? scoreBandFilter
+    : null
 
   const supabase = await createClient()
   const {
@@ -141,11 +165,15 @@ export default async function AuditHistoryPage({
   let auditQuery = supabase
     .from('audits')
     .select(
-      'id, store_id, audited_by, status, is_locked, visit_date, visit_time, total_score, max_score, percentage, section_scores, scoring_model_version, created_at'
+      'id, store_id, audited_by, status, is_locked, visit_date, visit_time, total_score, max_score, percentage, score_band, section_scores, scoring_model_version, created_at, completed_at'
     )
 
   if (activeStatus) {
     auditQuery = auditQuery.eq('status', activeStatus)
+  }
+
+  if (activeScoreBand) {
+    auditQuery = auditQuery.eq('score_band', activeScoreBand)
   }
 
   const { data: auditRows } = await auditQuery
@@ -198,6 +226,8 @@ export default async function AuditHistoryPage({
     <AuditHistoryList
       audits={buildAuditItems(audits, stores, areas, creators)}
       activeStatus={activeStatus}
+      activeScoreBand={activeScoreBand}
+      searchQuery={searchQuery}
     />
   )
 }
