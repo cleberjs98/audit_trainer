@@ -43,7 +43,7 @@ function AssignmentNotice({
 }) {
   return (
     <main className="min-h-screen bg-background">
-      <header className="border-b border-border bg-surface/90 px-4 py-4 shadow-sm">
+      <header className="app-topbar border-b px-4 py-4">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
@@ -66,7 +66,7 @@ function AssignmentNotice({
       </header>
 
       <section className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900 shadow-sm">
+        <div className="rounded-2xl border border-warning/20 bg-warning-soft p-5 text-warning shadow-sm">
           <p className="text-sm font-semibold">{title}</p>
           <h1 className="mt-2 text-2xl font-semibold">
             Audit creation is not available yet.
@@ -180,7 +180,7 @@ export default async function StartAuditPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="border-b border-border bg-surface/90 px-4 py-4 shadow-sm">
+      <header className="app-topbar border-b px-4 py-4">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
@@ -195,7 +195,7 @@ export default async function StartAuditPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+            <span className="rounded-full border border-primary/20 bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
               {formatUserRole(profile.role)}
             </span>
             <Link
@@ -208,21 +208,35 @@ export default async function StartAuditPage() {
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
-          <p className="text-sm font-semibold text-primary">Start Audit</p>
-          <h1 className="mt-2 text-3xl font-semibold text-foreground">
-            Create a draft audit.
-          </h1>
-          <p className="mt-3 max-w-3xl text-base leading-7 text-muted">
-            Choose the visit details for an active store. RLS and server-side
-            validation enforce your store or area scope before the audit is
-            created.
-          </p>
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="app-card overflow-hidden rounded-[1.5rem]">
+          <div className="grid gap-0 lg:grid-cols-[1fr_18rem]">
+            <div className="p-5 sm:p-7">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+                Start Audit
+              </p>
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                Set up the visit.
+              </h1>
+              <p className="mt-3 max-w-3xl text-base leading-7 text-muted">
+                Choose the store, timing, and visit context. The next step opens
+                the guided checklist for the selected store.
+              </p>
+            </div>
+            <div className="border-t border-border bg-info p-5 text-white lg:border-l lg:border-t-0 sm:p-7">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                Next
+              </p>
+              <p className="mt-3 text-2xl font-semibold">Guided checklist</p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                One focused question at a time with score preview and review.
+              </p>
+            </div>
+          </div>
         </section>
 
         {storeOptions.length === 0 ? (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900 shadow-sm">
+          <div className="rounded-2xl border border-warning/20 bg-warning-soft p-5 text-warning shadow-sm">
             <p className="text-sm font-semibold">No active stores available</p>
             <p className="mt-2 text-sm leading-6">
               There are no active stores available for your role. Ask an admin
@@ -240,4 +254,3 @@ export default async function StartAuditPage() {
     </main>
   )
 }
-

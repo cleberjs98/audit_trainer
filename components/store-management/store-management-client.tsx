@@ -28,8 +28,8 @@ function StatusMessage({ state }: { state: StoreMutationState }) {
 
   const tone =
     state.status === 'success'
-      ? 'border-green-200 bg-green-50 text-green-800'
-      : 'border-red-200 bg-red-50 text-red-800'
+      ? 'border-success/20 bg-success-soft text-success'
+      : 'border-danger/20 bg-danger-soft text-danger'
 
   return (
     <p
@@ -58,7 +58,7 @@ function CreateStoreForm({
   return (
     <form
       action={formAction}
-      className="rounded-2xl border border-border bg-surface p-5 shadow-sm"
+      className="app-card rounded-[1.5rem] p-5"
     >
       <div>
         <p className="text-sm font-semibold text-primary">Create store</p>
@@ -125,7 +125,7 @@ function CreateStoreForm({
           </div>
         )}
 
-        <label className="flex min-h-11 items-center gap-3 rounded-lg border border-border bg-white px-3 text-sm font-semibold text-foreground">
+        <label className="flex min-h-11 items-center gap-3 rounded-xl border border-border bg-white px-3 text-sm font-semibold text-foreground">
           <input
             type="checkbox"
             name="is_active"
@@ -141,7 +141,7 @@ function CreateStoreForm({
         <button
           type="submit"
           disabled={isPending || !canSubmit}
-          className="min-h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-muted"
+          className="app-primary-action min-h-11 rounded-xl px-5 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted"
         >
           {isPending ? 'Saving...' : 'Create store'}
         </button>
@@ -159,7 +159,7 @@ function StoreUpdateForm({ store }: { store: StoreManagementRow }) {
   return (
     <form
       action={formAction}
-      className="rounded-2xl border border-border bg-surface p-5 shadow-sm"
+      className="app-card rounded-2xl p-4"
     >
       <input type="hidden" name="store_id" value={store.id} />
 
@@ -172,8 +172,8 @@ function StoreUpdateForm({ store }: { store: StoreManagementRow }) {
             <span
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
                 store.isActive
-                  ? 'bg-green-50 text-green-800'
-                  : 'bg-amber-50 text-amber-800'
+                  ? 'bg-success-soft text-success'
+                  : 'bg-warning-soft text-warning'
               }`}
             >
               {store.isActive ? 'Active' : 'Inactive'}
@@ -206,7 +206,7 @@ function StoreUpdateForm({ store }: { store: StoreManagementRow }) {
           />
         </label>
 
-        <label className="flex min-h-11 items-center gap-3 rounded-lg border border-border bg-white px-3 text-sm font-semibold text-foreground">
+        <label className="flex min-h-11 items-center gap-3 rounded-xl border border-border bg-white px-3 text-sm font-semibold text-foreground">
           <input
             type="checkbox"
             name="is_active"
@@ -237,9 +237,11 @@ export function StoreManagementClient({
   areas,
   stores,
 }: StoreManagementClientProps) {
+  const activeStoreCount = stores.filter((store) => store.isActive).length
+
   return (
     <main className="min-h-screen bg-background">
-      <header className="border-b border-border bg-surface/90 px-4 py-4 shadow-sm">
+      <header className="app-topbar border-b px-4 py-4">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
@@ -264,8 +266,8 @@ export function StoreManagementClient({
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="app-card rounded-[1.5rem] p-5 sm:p-7">
           <p className="text-sm font-semibold text-primary">
             Store Management
           </p>
@@ -276,6 +278,25 @@ export function StoreManagementClient({
             Admins can manage all stores. Area managers can create and update
             stores only inside their assigned area.
           </p>
+        </section>
+
+        <section className="grid gap-4 sm:grid-cols-2">
+          <div className="app-card rounded-2xl p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Total stores
+            </p>
+            <p className="mt-3 text-3xl font-semibold text-foreground">
+              {stores.length}
+            </p>
+          </div>
+          <div className="app-card rounded-2xl p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Active stores
+            </p>
+            <p className="mt-3 text-3xl font-semibold text-success">
+              {activeStoreCount}
+            </p>
+          </div>
         </section>
 
         <CreateStoreForm areas={areas} profile={profile} />

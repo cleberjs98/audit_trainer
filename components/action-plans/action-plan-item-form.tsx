@@ -25,11 +25,11 @@ type ActionPlanItemFormProps = {
 
 function stateTone(status: ActionPlanActionState['status']) {
   if (status === 'success') {
-    return 'border-green-200 bg-green-50 text-green-800'
+    return 'border-success/20 bg-success-soft text-success'
   }
 
   if (status === 'error') {
-    return 'border-red-200 bg-red-50 text-red-800'
+    return 'border-danger/20 bg-danger-soft text-danger'
   }
 
   return 'border-border bg-background text-muted'

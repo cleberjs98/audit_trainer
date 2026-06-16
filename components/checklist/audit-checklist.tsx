@@ -116,6 +116,103 @@ function questionChipLabel(question: ChecklistQuestion) {
   return String(question.displayNumber ?? question.orderIndex)
 }
 
+function questionStepperStatus(question: ChecklistQuestion) {
+  if (!question.answer) {
+    return 'unanswered'
+  }
+
+  if (question.answer.isNa) {
+    return 'answered'
+  }
+
+  const score = question.answer.score
+
+  if (question.scoringGroup === 'bonus') {
+    return score === question.maxScore ? 'bonus-achieved' : 'bonus-none'
+  }
+
+  if (typeof score !== 'number') {
+    return 'unanswered'
+  }
+
+  if (score >= 5) {
+    return 'success'
+  }
+
+  if (score === 4) {
+    return 'warning'
+  }
+
+  return 'danger'
+}
+
+function stepperMarkerClass(question: ChecklistQuestion, active: boolean) {
+  const status = questionStepperStatus(question)
+  const activeRing = active
+    ? 'ring-4 ring-primary/35 ring-offset-2 ring-offset-surface shadow-[0_0_0_7px_rgba(209,31,58,0.08)]'
+    : ''
+
+  if (question.scoringGroup === 'bonus') {
+    if (status === 'bonus-achieved') {
+      return `border-accent bg-accent text-foreground shadow-[0_10px_22px_rgba(255,176,32,0.24)] ${activeRing}`
+    }
+
+    if (active) {
+      return 'border-primary bg-white text-primary ring-4 ring-primary/35 ring-offset-2 ring-offset-surface shadow-[0_0_0_7px_rgba(209,31,58,0.08)]'
+    }
+
+    return 'border-border bg-white text-muted-strong'
+  }
+
+  if (status === 'success') {
+    return `border-success bg-success text-white shadow-[0_10px_22px_rgba(18,183,106,0.20)] ${activeRing}`
+  }
+
+  if (status === 'warning') {
+    return `border-warning bg-warning text-white shadow-[0_10px_22px_rgba(247,144,9,0.20)] ${activeRing}`
+  }
+
+  if (status === 'danger') {
+    return `border-danger bg-danger text-white shadow-[0_10px_22px_rgba(240,68,56,0.20)] ${activeRing}`
+  }
+
+  if (active) {
+    return 'border-primary bg-primary text-white shadow-[0_10px_22px_rgba(209,31,58,0.22)]'
+  }
+
+  return 'border-border bg-white text-muted-strong'
+}
+
+function stepperMarkerSubLabel(question: ChecklistQuestion) {
+  const score = question.answer?.score
+
+  if (!question.answer) {
+    return ''
+  }
+
+  if (question.scoringGroup === 'bonus') {
+    return typeof score === 'number' ? `${score}/${question.maxScore}` : ''
+  }
+
+  return typeof score === 'number' ? `${score}/${question.maxScore}` : ''
+}
+
+function stepperAriaLabel(question: ChecklistQuestion, active: boolean) {
+  const prefix =
+    question.scoringGroup === 'bonus'
+      ? 'Go to bonus question'
+      : `Go to question ${questionChipLabel(question)}`
+  const score = question.answer?.score
+  const status =
+    question.answer && typeof score === 'number'
+      ? `answered score ${score}`
+      : question.answer?.isNa
+        ? 'answered N/A'
+        : 'unanswered'
+
+  return `${prefix}, ${status}${active ? ', current' : ''}`
+}
+
 function persistedScoreLabel(audit: ChecklistAudit) {
   if (audit.maxScore <= 0) {
     return 'Not finalized'
@@ -141,11 +238,11 @@ function scoreLabel(preview: ScorePreview) {
 
 function statusTone(status: SaveAnswerState['status'] | CompleteAuditState['status']) {
   if (status === 'success') {
-    return 'border-green-200 bg-green-50 text-green-800'
+    return 'border-success/20 bg-success-soft text-success'
   }
 
   if (status === 'error') {
-    return 'border-red-200 bg-red-50 text-red-800'
+    return 'border-danger/20 bg-danger-soft text-danger'
   }
 
   return 'border-border bg-background text-muted'
@@ -190,7 +287,7 @@ function ActionPlanAuditCallout({
 
   if (audit.status !== 'completed') {
     return (
-      <section className="rounded-2xl border border-border bg-surface p-4 text-sm text-muted shadow-sm">
+      <section className="rounded-xl border border-border bg-surface-soft px-4 py-3 text-xs font-medium text-muted">
         Action plans become available after audit completion.
       </section>
     )
@@ -494,6 +591,40 @@ function QuestionInput({
     )
   }
 
+  if (isPretQuestion && question.scoringGroup === 'core') {
+    return (
+      <fieldset className="flex flex-col gap-3">
+        <legend className="text-sm font-semibold text-foreground">
+          Score
+        </legend>
+        <div className="grid grid-cols-6 gap-2">
+          {Array.from({ length: question.maxScore + 1 }, (_, score) => {
+            const value = String(score)
+            const selected = draft.score === value
+
+            return (
+              <button
+                key={value}
+                type="button"
+                disabled={readOnly}
+                onClick={() => {
+                  onDraftChange({ ...draft, score: value, isNa: false })
+                }}
+                className={`min-h-12 rounded-xl border text-base font-bold transition ${
+                  selected
+                    ? 'border-primary bg-primary text-white shadow-[0_10px_22px_rgba(209,31,58,0.20)]'
+                    : 'border-border bg-white text-foreground hover:border-primary hover:text-primary'
+                } disabled:cursor-not-allowed disabled:opacity-70`}
+              >
+                {score}
+              </button>
+            )
+          })}
+        </div>
+      </fieldset>
+    )
+  }
+
   return (
     <>
       <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
@@ -504,7 +635,7 @@ function QuestionInput({
           onChange={(event) =>
             onDraftChange({ ...draft, score: event.currentTarget.value })
           }
-          className="min-h-12 rounded-lg border border-border bg-surface px-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-background disabled:text-muted"
+          className="min-h-12 rounded-xl border border-border bg-surface px-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:bg-background disabled:text-muted"
         >
           <option value="">Select score</option>
           {Array.from({ length: question.maxScore + 1 }, (_, score) => (
@@ -637,7 +768,7 @@ function ReviewCompleteCard({
         </div>
 
         {missingRequiredCoreQuestions.length > 0 ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
+          <div className="rounded-xl border border-warning/20 bg-warning-soft p-3 text-warning">
             <p className="text-sm font-semibold">
               Complete these required questions first:
             </p>
@@ -654,7 +785,7 @@ function ReviewCompleteCard({
                     onClick={() => {
                       onQuestionSelect(questionIndex)
                     }}
-                    className="min-h-10 rounded-lg border border-amber-300 bg-white px-3 text-sm font-semibold text-amber-900"
+                    className="min-h-10 rounded-lg border border-warning/30 bg-white px-3 text-sm font-semibold text-warning"
                   >
                     {questionChipLabel(question)}
                   </button>
@@ -677,13 +808,13 @@ function ReviewCompleteCard({
       {canComplete ? (
         <div className="mt-5 flex flex-col gap-4">
           {hasMissingRequired ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-medium leading-6 text-amber-900">
+            <div className="rounded-lg border border-warning/20 bg-warning-soft px-3 py-3 text-sm font-medium leading-6 text-warning">
               Completion is locked until every required core question is
               answered.
             </div>
           ) : (
             <>
-              <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-medium leading-6 text-amber-900">
+              <label className="flex items-start gap-3 rounded-lg border border-warning/20 bg-warning-soft px-3 py-3 text-sm font-medium leading-6 text-warning">
                 <input
                   type="checkbox"
                   checked={confirmed}
@@ -887,8 +1018,26 @@ export function AuditChecklist({
 
   return (
     <main className="relative z-10 pointer-events-auto bg-background">
-      <section className="relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 sm:px-6">
-        <section className="sticky top-0 z-30 rounded-b-2xl border border-t-0 border-border bg-surface/95 p-4 shadow-sm backdrop-blur">
+      <section className="relative z-10 mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-4 sm:px-6">
+        <nav
+          aria-label="Audit navigation"
+          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <Link
+            href="/audits"
+            className="inline-flex min-h-10 items-center justify-center rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm transition hover:border-primary hover:text-primary focus:outline-none focus:ring-4 focus:ring-primary/15"
+          >
+            Back to Audit History
+          </Link>
+          <Link
+            href="/dashboard"
+            className="inline-flex min-h-10 items-center justify-center rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm transition hover:border-primary hover:text-primary focus:outline-none focus:ring-4 focus:ring-primary/15"
+          >
+            Dashboard
+          </Link>
+        </nav>
+
+        <section className="sticky top-0 z-30 rounded-b-[1.5rem] border border-t-0 border-border bg-surface/95 p-4 shadow-[0_18px_45px_rgba(23,26,31,0.10)] backdrop-blur">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">
@@ -898,7 +1047,7 @@ export function AuditChecklist({
                     ? `Question ${boundedStepIndex + 1} of ${questions.length}`
                     : 'Checklist'}
               </p>
-              <p className="mt-1 text-lg font-semibold text-foreground">
+              <p className="mt-1 text-2xl font-semibold text-foreground">
                 {audit.maxScore > 0
                   ? persistedScoreLabel(audit)
                   : scoreLabel(preview)}
@@ -907,7 +1056,7 @@ export function AuditChecklist({
                 {answeredTotal}/{questions.length} answered
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground">
+            <div className="rounded-2xl border border-primary/20 bg-primary-soft px-4 py-3 text-lg font-bold text-primary">
               {progressValue}%
             </div>
           </div>
@@ -924,37 +1073,64 @@ export function AuditChecklist({
 
           {questions.length > 0 ? (
             <nav aria-label="Jump to question" className="mt-3">
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="relative overflow-x-auto pb-2 pt-2">
+                <div
+                  aria-hidden="true"
+                  className="absolute left-6 right-6 top-7 h-0.5 rounded-full bg-border"
+                />
+                <div className="relative flex min-w-max gap-3 px-1">
                 {questions.map((question, index) => {
                   const active =
                     wizard.mode === 'question' && index === boundedStepIndex
-                  const answered = isAnswered(question)
+                  const subLabel = stepperMarkerSubLabel(question)
 
                   return (
                     <button
                       key={question.id}
                       type="button"
                       onClick={() => handleJumpToStep(index)}
-                      className={`min-h-9 shrink-0 rounded-lg border px-3 text-xs font-semibold transition ${
-                        active
-                          ? 'border-primary bg-primary text-white'
-                          : answered
-                            ? 'border-green-200 bg-green-50 text-green-800'
-                            : 'border-border bg-background text-foreground hover:border-primary hover:text-primary'
-                      }`}
+                      className="group relative z-10 flex shrink-0 flex-col items-center gap-1 focus:outline-none"
                       aria-current={active ? 'step' : undefined}
+                      aria-label={stepperAriaLabel(question, active)}
                     >
-                      {questionChipLabel(question)}
+                      <span
+                        className={`flex size-10 items-center justify-center border-2 text-xs font-black transition group-hover:scale-105 ${
+                          question.scoringGroup === 'bonus'
+                            ? 'rounded-full text-base'
+                            : 'rounded-full'
+                        } ${stepperMarkerClass(question, active)}`}
+                      >
+                        {question.scoringGroup === 'bonus'
+                          ? '★'
+                          : questionChipLabel(question)}
+                      </span>
+                      {subLabel ? (
+                        <span
+                          className={`h-4 max-w-14 truncate text-[0.65rem] font-semibold ${
+                            active ? 'text-primary' : 'text-muted'
+                          }`}
+                        >
+                          {subLabel}
+                        </span>
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          className={`mt-1 size-1.5 rounded-full ${
+                            active ? 'bg-primary' : 'bg-border'
+                          }`}
+                        />
+                      )}
                     </button>
                   )
                 })}
+                </div>
               </div>
             </nav>
           ) : null}
         </section>
 
         {readOnly ? (
-          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 shadow-sm">
+          <section className="rounded-2xl border border-warning/20 bg-warning-soft p-4 text-warning shadow-sm">
             <p className="text-sm font-semibold">Read-only audit</p>
             <p className="mt-2 text-sm leading-6">
               This audit is completed or locked. You can review the checklist,
@@ -964,7 +1140,7 @@ export function AuditChecklist({
         ) : null}
 
         {audit.scoringModelVersion === 'legacy_62_v1' ? (
-          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 shadow-sm">
+          <section className="rounded-2xl border border-warning/20 bg-warning-soft p-4 text-warning shadow-sm">
             <p className="text-sm font-semibold">Legacy checklist model</p>
             <p className="mt-2 text-sm leading-6">
               This audit was created with the legacy checklist model. Start a
@@ -995,11 +1171,11 @@ export function AuditChecklist({
               onQuestionSelect={handleJumpToStep}
             />
           ) : currentQuestion ? (
-            <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
-              <article className="rounded-2xl border border-border bg-white p-4 shadow-sm">
+            <section className="app-card rounded-[1.5rem] p-4">
+              <article className="rounded-[1.35rem] border border-border bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
+                    <span className="rounded-full border border-primary/20 bg-primary-soft px-2 py-1 text-xs font-semibold text-primary">
                       {sectionLabel(currentQuestion)}
                     </span>
                     {currentQuestion.isRequired ? (
@@ -1016,7 +1192,7 @@ export function AuditChecklist({
                     </span>
                   </div>
 
-                  <h2 className="text-xl font-semibold leading-7 text-foreground">
+                  <h2 className="text-2xl font-semibold leading-8 text-foreground">
                     {currentQuestion.displayNumber
                       ? `${currentQuestion.displayNumber}. `
                       : ''}
@@ -1060,7 +1236,7 @@ export function AuditChecklist({
                         })
                       }
                       placeholder="Optional notes"
-                      className="rounded-lg border border-border bg-surface px-3 py-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-background disabled:text-muted"
+                      className="rounded-xl border border-border bg-surface px-3 py-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:bg-background disabled:text-muted"
                     />
                   </label>
 
@@ -1071,7 +1247,7 @@ export function AuditChecklist({
                       type="button"
                       disabled={boundedStepIndex === 0}
                       onClick={handleBack}
-                      className="min-h-12 rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:text-muted"
+                      className="min-h-12 rounded-xl border border-border bg-white px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-4 focus:ring-primary/15 disabled:cursor-not-allowed disabled:text-muted"
                     >
                       Back
                     </button>
@@ -1085,7 +1261,7 @@ export function AuditChecklist({
                         type="button"
                         disabled={isSaving}
                         onClick={handleSaveAndContinue}
-                        className="min-h-12 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-muted"
+                        className="app-primary-action min-h-12 rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted"
                       >
                         {isSaving
                           ? 'Saving...'

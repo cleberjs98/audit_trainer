@@ -73,7 +73,7 @@ function ActionPlanAccessFallback() {
   return (
     <main className="min-h-screen bg-background">
       <section className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900 shadow-sm">
+        <div className="rounded-2xl border border-warning/20 bg-warning-soft p-5 text-warning shadow-sm">
           <p className="text-sm font-semibold">Action plan unavailable</p>
           <h1 className="mt-2 text-2xl font-semibold">
             Action plan not found or access denied.

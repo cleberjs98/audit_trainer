@@ -54,11 +54,11 @@ function scoreLabel(actionPlan: ActionPlanDetailData) {
 
 function stateTone(status: ActionPlanActionState['status']) {
   if (status === 'success') {
-    return 'border-green-200 bg-green-50 text-green-800'
+    return 'border-success/20 bg-success-soft text-success'
   }
 
   if (status === 'error') {
-    return 'border-red-200 bg-red-50 text-red-800'
+    return 'border-danger/20 bg-danger-soft text-danger'
   }
 
   return 'border-border bg-background text-muted'
@@ -118,7 +118,7 @@ export function ActionPlanDetail({
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="border-b border-border bg-surface/90 px-4 py-4 shadow-sm">
+      <header className="app-topbar border-b px-4 py-4">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
@@ -151,8 +151,10 @@ export function ActionPlanDetail({
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="app-card overflow-hidden rounded-[1.5rem]">
+          <div className="grid gap-0 lg:grid-cols-[1fr_20rem]">
+            <div className="p-5 sm:p-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <div className="flex flex-wrap gap-2">
@@ -167,17 +169,35 @@ export function ActionPlanDetail({
                   'Track manual follow-up actions for this completed audit.'}
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-background px-4 py-3">
-              <p className="text-xs font-semibold text-muted">Items completed</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">
+          </div>
+            </div>
+            <div className="border-t border-border bg-info p-5 text-white lg:border-l lg:border-t-0 sm:p-7">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                Item progress
+              </p>
+              <p className="mt-3 text-4xl font-semibold">
                 {completedItemCount}/{actionPlan.items.length}
               </p>
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/15">
+                <div
+                  className="h-full rounded-full bg-primary"
+                  style={{
+                    width: `${
+                      actionPlan.items.length > 0
+                        ? Math.round(
+                            (completedItemCount / actionPlan.items.length) * 100
+                          )
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
             </div>
           </div>
         </section>
 
         {readOnlyReason ? (
-          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 shadow-sm">
+          <section className="rounded-2xl border border-warning/20 bg-warning-soft p-4 text-warning shadow-sm">
             <p className="text-sm font-semibold">Read-only action plan</p>
             <p className="mt-2 text-sm leading-6">{readOnlyReason}</p>
           </section>
@@ -221,7 +241,7 @@ export function ActionPlanDetail({
         </section>
 
         {canManage ? (
-          <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+          <section className="app-card rounded-2xl p-4">
             <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
               <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
                 Plan status
@@ -241,7 +261,7 @@ export function ActionPlanDetail({
                 type="button"
                 disabled={isUpdatingPlan}
                 onClick={handlePlanStatusUpdate}
-                className="min-h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted"
+                className="app-primary-action min-h-11 rounded-xl px-5 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted"
               >
                 {isUpdatingPlan ? 'Updating...' : 'Update Status'}
               </button>
@@ -260,7 +280,7 @@ export function ActionPlanDetail({
         ) : null}
 
         {canManage ? (
-          <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+          <section className="app-card rounded-2xl p-5">
             <h2 className="text-xl font-semibold text-foreground">
               Add action item
             </h2>
@@ -289,7 +309,7 @@ export function ActionPlanDetail({
             actionPlan.items.map((item) => (
               <article
                 key={item.id}
-                className="rounded-2xl border border-border bg-surface p-5 shadow-sm"
+                className="app-card rounded-2xl p-4"
               >
                 {editingItemId === item.id ? (
                   <ActionPlanItemForm
@@ -317,7 +337,7 @@ export function ActionPlanDetail({
                     </div>
 
                     <dl className="grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-xl border border-border bg-background p-3">
+                      <div className="rounded-xl border border-border bg-surface-soft p-3">
                         <dt className="text-xs font-semibold text-muted">
                           Owner
                         </dt>
@@ -325,7 +345,7 @@ export function ActionPlanDetail({
                           {item.owner ?? 'Not assigned'}
                         </dd>
                       </div>
-                      <div className="rounded-xl border border-border bg-background p-3">
+                      <div className="rounded-xl border border-border bg-surface-soft p-3">
                         <dt className="text-xs font-semibold text-muted">
                           Due date
                         </dt>
@@ -333,7 +353,7 @@ export function ActionPlanDetail({
                           {formatDate(item.dueDate)}
                         </dd>
                       </div>
-                      <div className="rounded-xl border border-border bg-background p-3">
+                      <div className="rounded-xl border border-border bg-surface-soft p-3">
                         <dt className="text-xs font-semibold text-muted">
                           Completed
                         </dt>

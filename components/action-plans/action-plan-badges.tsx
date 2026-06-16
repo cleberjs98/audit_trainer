@@ -18,10 +18,10 @@ export function ActionPlanStatusBadge({
 }) {
   const tone =
     status === 'completed'
-      ? 'border-green-200 bg-green-50 text-green-800'
+      ? 'border-success/20 bg-success-soft text-success'
       : status === 'in_progress'
-        ? 'border-amber-200 bg-amber-50 text-amber-900'
-        : 'border-primary/20 bg-primary/10 text-primary'
+        ? 'border-warning/20 bg-warning-soft text-warning'
+        : 'border-primary/20 bg-primary-soft text-primary'
 
   return (
     <span className={`rounded-full border px-2 py-1 text-xs font-semibold ${tone}`}>
@@ -37,9 +37,9 @@ export function ActionItemStatusBadge({
 }) {
   const tone =
     status === 'completed'
-      ? 'border-green-200 bg-green-50 text-green-800'
+      ? 'border-success/20 bg-success-soft text-success'
       : status === 'in_progress'
-        ? 'border-amber-200 bg-amber-50 text-amber-900'
+        ? 'border-warning/20 bg-warning-soft text-warning'
         : 'border-border bg-background text-muted'
 
   return (
@@ -56,10 +56,10 @@ export function ActionPriorityBadge({
 }) {
   const tone =
     priority === 'high'
-      ? 'border-red-200 bg-red-50 text-red-800'
+      ? 'border-danger/20 bg-danger-soft text-danger'
       : priority === 'medium'
-        ? 'border-amber-200 bg-amber-50 text-amber-900'
-        : 'border-green-200 bg-green-50 text-green-800'
+        ? 'border-warning/20 bg-warning-soft text-warning'
+        : 'border-success/20 bg-success-soft text-success'
 
   return (
     <span className={`rounded-full border px-2 py-1 text-xs font-semibold ${tone}`}>

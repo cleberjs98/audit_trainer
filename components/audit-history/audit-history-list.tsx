@@ -123,31 +123,31 @@ function scoreLabel(audit: AuditHistoryItem) {
 
 function statusTone(status: AuditStatus) {
   if (status === 'completed') {
-    return 'border-green-200 bg-green-50 text-green-800'
+    return 'border-success/20 bg-success-soft text-success'
   }
 
   if (status === 'in_progress') {
-    return 'border-amber-200 bg-amber-50 text-amber-900'
+    return 'border-warning/20 bg-warning-soft text-warning'
   }
 
   if (status === 'archived') {
     return 'border-border bg-background text-muted'
   }
 
-  return 'border-primary/20 bg-primary/10 text-primary'
+  return 'border-primary/20 bg-primary-soft text-primary'
 }
 
 function scoreBandTone(scoreBand: AuditScoreBand | null) {
   if (scoreBand === 'excellent' || scoreBand === 'good') {
-    return 'border-green-200 bg-green-50 text-green-800'
+    return 'border-success/20 bg-success-soft text-success'
   }
 
   if (scoreBand === 'needs_focus') {
-    return 'border-amber-200 bg-amber-50 text-amber-900'
+    return 'border-warning/20 bg-warning-soft text-warning'
   }
 
   if (scoreBand === 'critical') {
-    return 'border-red-200 bg-red-50 text-red-800'
+    return 'border-danger/20 bg-danger-soft text-danger'
   }
 
   return 'border-border bg-background text-muted'
@@ -214,7 +214,7 @@ export function AuditHistoryList({
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="border-b border-border bg-surface/90 px-4 py-4 shadow-sm">
+      <header className="app-topbar border-b px-4 py-4">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
@@ -245,8 +245,8 @@ export function AuditHistoryList({
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="app-card rounded-[1.5rem] p-5 sm:p-7">
           <p className="text-sm font-semibold text-primary">Audit History</p>
           <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -259,7 +259,7 @@ export function AuditHistoryList({
                 shown separately.
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-background px-4 py-3">
+            <div className="rounded-2xl border border-border bg-surface-soft px-4 py-3">
               <p className="text-xs font-semibold text-muted">Showing</p>
               <p className="mt-1 text-lg font-semibold text-foreground">
                 {filteredAudits.length} audits
@@ -268,7 +268,7 @@ export function AuditHistoryList({
           </div>
         </section>
 
-        <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+        <section className="app-card rounded-2xl p-4">
           <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
             <form action="/audits" className="flex flex-col gap-2">
               <label
@@ -391,100 +391,74 @@ export function AuditHistoryList({
             </Link>
           </section>
         ) : (
-          <section className="grid gap-4 lg:grid-cols-2">
+          <section className="grid gap-3">
             {filteredAudits.map((audit) => (
               <article
                 key={audit.id}
-                className="rounded-2xl border border-border bg-surface p-5 shadow-sm"
+                className="app-card rounded-2xl p-4 transition hover:border-primary/30 hover:shadow-[0_18px_40px_rgba(23,26,31,0.10)]"
               >
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-wrap gap-2">
-                    <span
-                      className={`rounded-full border px-2 py-1 text-xs font-semibold ${statusTone(
-                        audit.status
-                      )}`}
-                    >
-                      {formatStatus(audit.status)}
-                    </span>
-                    <span className="rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
-                      {audit.isLocked ? 'Locked' : 'Unlocked'}
-                    </span>
-                    {!isPretAudit(audit) ? (
-                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">
-                        Legacy checklist
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h2 className="text-xl font-semibold text-foreground">
+                <div className="grid gap-4 xl:grid-cols-[1fr_18rem_auto] xl:items-center">
+                  <div className="flex items-start gap-4">
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-sm font-black text-primary">
+                      {audit.storeName.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap gap-2">
+                        <span
+                          className={`rounded-full border px-2 py-1 text-xs font-semibold ${statusTone(
+                            audit.status
+                          )}`}
+                        >
+                          {formatStatus(audit.status)}
+                        </span>
+                        <span className="rounded-full border border-border bg-surface-soft px-2 py-1 text-xs font-semibold text-muted">
+                          {audit.isLocked ? 'Locked' : 'Unlocked'}
+                        </span>
+                        {!isPretAudit(audit) ? (
+                          <span className="rounded-full border border-warning/20 bg-warning-soft px-2 py-1 text-xs font-semibold text-warning">
+                            Legacy
+                          </span>
+                        ) : null}
+                      </div>
+                      <h2 className="mt-2 text-lg font-semibold text-foreground">
                         {audit.storeName}
                       </h2>
-                      <p className="mt-1 text-sm font-medium text-muted">
+                      <p className="text-sm font-medium text-muted">
                         Store {audit.storeCode} - {audit.areaName}
                       </p>
-                      <p className="mt-2 text-sm leading-6 text-muted">
+                      <p className="mt-1 text-sm leading-6 text-muted">
                         Visit {formatDate(audit.visitDate)} at{' '}
-                        {formatTime(audit.visitTime)}
+                        {formatTime(audit.visitTime)} - {audit.creatorName}
                       </p>
                     </div>
-
-                    <Link
-                      href={`/audits/${audit.id}`}
-                      className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    >
-                      Open audit
-                    </Link>
                   </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-border bg-surface-soft p-3">
+                      <p className="text-xs font-semibold text-muted">Score</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">
+                        {scoreLabel(audit)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-border bg-surface-soft p-3">
+                      <p className="text-xs font-semibold text-muted">Band</p>
+                      <span
+                        className={`mt-2 inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${scoreBandTone(
+                          audit.scoreBand
+                        )}`}
+                      >
+                        {formatScoreBand(audit.scoreBand)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <Link
+                    href={`/audits/${audit.id}`}
+                    className="app-primary-action inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20"
+                  >
+                    Open audit
+                  </Link>
                 </div>
-
-                <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-border bg-background p-3">
-                    <dt className="text-xs font-semibold text-muted">Score</dt>
-                    <dd className="mt-1 text-sm font-semibold text-foreground">
-                      {scoreLabel(audit)}
-                    </dd>
-                  </div>
-                  <div className="rounded-xl border border-border bg-background p-3">
-                    <dt className="text-xs font-semibold text-muted">
-                      Score band
-                    </dt>
-                    <dd
-                      className={`mt-2 inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${scoreBandTone(
-                        audit.scoreBand
-                      )}`}
-                    >
-                      {formatScoreBand(audit.scoreBand)}
-                    </dd>
-                  </div>
-                  <div className="rounded-xl border border-border bg-background p-3">
-                    <dt className="text-xs font-semibold text-muted">
-                      Auditor
-                    </dt>
-                    <dd className="mt-1 text-sm font-semibold text-foreground">
-                      {audit.creatorName}
-                    </dd>
-                    {audit.creatorEmail ? (
-                      <dd className="mt-1 break-words text-xs text-muted">
-                        {audit.creatorEmail}
-                      </dd>
-                    ) : null}
-                  </div>
-                  <div className="rounded-xl border border-border bg-background p-3">
-                    <dt className="text-xs font-semibold text-muted">
-                      Created
-                    </dt>
-                    <dd className="mt-1 text-sm font-semibold text-foreground">
-                      {formatDate(audit.createdAt.slice(0, 10))}
-                    </dd>
-                    {audit.completedAt ? (
-                      <dd className="mt-1 text-xs text-muted">
-                        Completed {formatDate(audit.completedAt.slice(0, 10))}
-                      </dd>
-                    ) : null}
-                  </div>
-                </dl>
               </article>
             ))}
           </section>

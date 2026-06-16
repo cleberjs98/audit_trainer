@@ -1,13 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f1e8;
-  --foreground: #171717;
-  --primary: #7a1e2c;
-  --primary-dark: #4a0f1a;
-  --surface: #fffcf7;
-  --border: #e5d8cc;
-  --muted: #6b625c;
+  --background: #f4f6f8;
+  --foreground: #171a1f;
+  --primary: #d11f3a;
+  --primary-dark: #a9152d;
+  --primary-soft: #fde8ec;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --border: #d9dee7;
+  --muted: #667085;
+  --muted-strong: #475467;
+  --accent: #ffb020;
+  --success: #12b76a;
+  --success-soft: #ecfdf3;
+  --warning: #f79009;
+  --warning-soft: #fffaeb;
+  --danger: #f04438;
+  --danger-soft: #fef3f2;
+  --info: #344054;
+  --info-soft: #f2f4f7;
 }
 
 @theme inline {
@@ -15,9 +27,21 @@
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-dark: var(--primary-dark);
+  --color-primary-soft: var(--primary-soft);
   --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
   --color-border: var(--border);
   --color-muted: var(--muted);
+  --color-muted-strong: var(--muted-strong);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -35,9 +59,86 @@ body {
   min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.app-topbar {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: #171a1f;
+  color: #ffffff;
+  box-shadow: 0 10px 30px rgba(23, 26, 31, 0.14);
+}
+
+.app-topbar .text-foreground {
+  color: #ffffff;
+}
+
+.app-topbar .text-muted {
+  color: #cbd5e1;
+}
+
+.app-topbar .border-border {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.app-topbar .bg-white,
+.app-topbar .bg-surface,
+.app-topbar .bg-background {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.app-topbar .hover\:border-primary:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.app-topbar .hover\:text-primary:hover {
+  color: #ffffff;
+}
+
+.bg-primary,
+.hover\:bg-primary:hover,
+.bg-primary-dark,
+.hover\:bg-primary-dark:hover {
+  color: #ffffff;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(209, 31, 58, 0.08), transparent 34rem),
+    var(--background);
+}
+
+.app-sidebar {
+  background: linear-gradient(180deg, #171a1f 0%, #242936 100%);
+  color: #ffffff;
+  box-shadow: 16px 0 50px rgba(23, 26, 31, 0.16);
+}
+
+.app-card {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 14px 38px rgba(23, 26, 31, 0.07);
+}
+
+.app-card-soft {
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+}
+
+.app-primary-action {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 12px 26px rgba(209, 31, 58, 0.22);
+}
+
+.app-primary-action:hover {
+  background: var(--primary-dark);
+  color: #ffffff;
 }
