@@ -7,6 +7,7 @@ type DashboardShellProps = {
   email: string
   profile: ProfileRow
   context: DashboardContext
+  analytics: DashboardAnalytics
 }
 
 type DashboardCard = {
@@ -21,6 +22,147 @@ type DashboardCard = {
 export type DashboardContext = {
   label: string
   value: string
+}
+
+export type DashboardMetric = {
+  label: string
+  value: string
+  helper: string
+  tone?: 'neutral' | 'success' | 'warning' | 'danger'
+}
+
+export type DashboardRecentAudit = {
+  id: string
+  storeName: string
+  storeCode: string
+  visitDate: string
+  completedAt: string | null
+  scoreLabel: string
+  scoreBand: 'excellent' | 'good' | 'needs_focus' | 'critical' | null
+  scoreBandLabel: string
+}
+
+export type DashboardAttentionStore = {
+  storeName: string
+  storeCode: string
+  reason: string
+  scoreLabel: string
+  tone: 'excellent' | 'good' | 'needs_focus' | 'critical'
+}
+
+export type DashboardActionItem = {
+  id: string
+  title: string
+  owner: string | null
+  priority: 'low' | 'medium' | 'high'
+  dueDate: string | null
+  status: 'open' | 'in_progress' | 'completed'
+  storeName: string
+  isOverdue: boolean
+}
+
+export type DashboardWeakSection = {
+  title: string
+  score: string
+  percentage: number
+}
+
+export type DashboardAnalytics = {
+  scopeLabel: string
+  scopeValue: string
+  completedThisMonth: number
+  averageScoreThisMonth: number | null
+  criticalOrNeedsFocusCount: number
+  openActionPlanCount: number
+  openActionItemCount: number
+  overdueActionItemCount: number
+  latestAudit: DashboardRecentAudit | null
+  trendDelta: number | null
+  metrics: DashboardMetric[]
+  recentAudits: DashboardRecentAudit[]
+  attentionStores: DashboardAttentionStore[]
+  currentActionItems: DashboardActionItem[]
+  weakestSections: DashboardWeakSection[]
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return 'Not dated'
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    const [year, month, day] = value.split('-')
+
+    return year && month && day ? `${day}/${month}/${year}` : value
+  }
+
+  return new Intl.DateTimeFormat('en-IE', {
+    dateStyle: 'medium',
+    timeZone: 'Europe/Dublin',
+  }).format(date)
+}
+
+function formatStatus(value: string) {
+  return value
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function metricToneClass(tone: DashboardMetric['tone']) {
+  if (tone === 'success') {
+    return 'border-success/20 bg-success-soft text-success'
+  }
+
+  if (tone === 'warning') {
+    return 'border-warning/20 bg-warning-soft text-warning'
+  }
+
+  if (tone === 'danger') {
+    return 'border-danger/20 bg-danger-soft text-danger'
+  }
+
+  return 'border-primary/20 bg-primary-soft text-primary'
+}
+
+function scoreBandTone(
+  tone: DashboardRecentAudit['scoreBand'] | DashboardAttentionStore['tone']
+) {
+  if (tone === 'excellent' || tone === 'good') {
+    return 'border-success/20 bg-success-soft text-success'
+  }
+
+  if (tone === 'needs_focus') {
+    return 'border-warning/20 bg-warning-soft text-warning'
+  }
+
+  if (tone === 'critical') {
+    return 'border-danger/20 bg-danger-soft text-danger'
+  }
+
+  return 'border-border bg-surface-soft text-muted'
+}
+
+function priorityTone(priority: DashboardActionItem['priority']) {
+  if (priority === 'high') {
+    return 'border-danger/20 bg-danger-soft text-danger'
+  }
+
+  if (priority === 'medium') {
+    return 'border-warning/20 bg-warning-soft text-warning'
+  }
+
+  return 'border-success/20 bg-success-soft text-success'
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface-soft p-5">
+      <p className="text-sm font-semibold text-foreground">{message}</p>
+    </div>
+  )
 }
 
 function getDashboardCards(profile: ProfileRow): DashboardCard[] {
@@ -93,6 +235,7 @@ export function DashboardShell({
   email,
   profile,
   context,
+  analytics,
 }: DashboardShellProps) {
   const cards = getDashboardCards(profile)
   const roleLabel = formatUserRole(profile.role)
@@ -205,11 +348,17 @@ export function DashboardShell({
                   Command center
                 </p>
                 <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                  Your audit workspace is ready.
+                  {profile.role === 'admin'
+                    ? 'Business performance at a glance.'
+                    : profile.role === 'area_manager'
+                      ? 'Area performance at a glance.'
+                      : profile.role === 'store_manager'
+                        ? 'Store performance and follow-up.'
+                        : "Today's store execution view."}
                 </h1>
                 <p className="mt-3 max-w-3xl text-base leading-7 text-muted">
-                  Start guided audits, review store performance, and keep manual
-                  action plans moving from one operational workspace.
+                  Track audit scores, action plans, and stores that need
+                  attention from one role-scoped command center.
                 </p>
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                   <Link
@@ -241,55 +390,242 @@ export function DashboardShell({
           </section>
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="app-card rounded-2xl p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Role
-              </p>
-              <p className="mt-3 text-2xl font-semibold text-foreground">
-                {roleLabel}
-              </p>
-              <p className="mt-2 text-sm text-muted">Access profile</p>
-            </div>
-            <div className="app-card rounded-2xl p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Available workflows
-              </p>
-              <p className="mt-3 text-2xl font-semibold text-foreground">
-                {cards.length}
-              </p>
-              <p className="mt-2 text-sm text-muted">Enabled actions</p>
-            </div>
-            <div className="app-card rounded-2xl p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Store tools
-              </p>
-              <p className="mt-3 text-2xl font-semibold text-foreground">
-                {canManageStores ? 'Enabled' : 'View only'}
-              </p>
-              <p className="mt-2 text-sm text-muted">Role based</p>
-            </div>
-            <div className="app-card rounded-2xl p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Account
-              </p>
-              <p className="mt-3 break-words text-base font-semibold text-foreground">
-                {email}
-              </p>
-            </div>
+            {analytics.metrics.map((metric) => (
+              <div key={metric.label} className="app-card rounded-2xl p-5">
+                <div
+                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${metricToneClass(
+                    metric.tone
+                  )}`}
+                >
+                  {metric.label}
+                </div>
+                <p className="mt-4 text-2xl font-semibold text-foreground">
+                  {metric.value}
+                </p>
+                <p className="mt-2 text-sm text-muted">{metric.helper}</p>
+              </div>
+            ))}
           </section>
 
-          {profile.role === 'leader' ? (
-            <section className="rounded-2xl border border-info/20 bg-info-soft p-5 shadow-sm">
-              <p className="text-sm font-semibold text-info">
-                Read-focused dashboard
+          <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+            <article className="app-card rounded-2xl p-5 sm:p-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-primary">
+                    Recent audits
+                  </p>
+                  <h2 className="text-2xl font-semibold text-foreground">
+                    Latest completed visits
+                  </h2>
+                </div>
+                <Link
+                  href="/audits"
+                  className="inline-flex min-h-10 items-center justify-center rounded-xl border border-border bg-white px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary"
+                >
+                  View all
+                </Link>
+              </div>
+
+              {analytics.recentAudits.length === 0 ? (
+                <div className="mt-5">
+                  <EmptyState message="No completed audits yet." />
+                </div>
+              ) : (
+                <div className="mt-5 grid gap-3">
+                  {analytics.recentAudits.map((audit) => (
+                    <Link
+                      key={audit.id}
+                      href={`/audits/${audit.id}`}
+                      className="rounded-2xl border border-border bg-white p-4 transition hover:border-primary/40 hover:shadow-md"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {audit.storeName} ({audit.storeCode})
+                          </p>
+                          <p className="mt-1 text-sm text-muted">
+                            Visit {formatDate(audit.visitDate)}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-primary/20 bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
+                            {audit.scoreLabel}
+                          </span>
+                          <span
+                            className={`rounded-full border px-3 py-1 text-xs font-semibold ${scoreBandTone(
+                              audit.scoreBand
+                            )}`}
+                          >
+                            {audit.scoreBandLabel}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </article>
+
+            <article className="app-card rounded-2xl p-5 sm:p-6">
+              <p className="text-sm font-semibold text-primary">
+                Action plans
               </p>
-              <p className="mt-2 text-sm leading-6 text-muted-strong">
-                Leader access is designed for learning from existing store
-                audits, reports, and action plans. Leaders can also start audits
-                for their assigned store when training needs to be captured.
+              <h2 className="text-2xl font-semibold text-foreground">
+                Current priorities
+              </h2>
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                <div className="rounded-2xl border border-border bg-surface-soft p-3">
+                  <p className="text-xs font-semibold text-muted">Plans</p>
+                  <p className="mt-1 text-xl font-semibold text-foreground">
+                    {analytics.openActionPlanCount}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-border bg-surface-soft p-3">
+                  <p className="text-xs font-semibold text-muted">Items</p>
+                  <p className="mt-1 text-xl font-semibold text-foreground">
+                    {analytics.openActionItemCount}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-warning/20 bg-warning-soft p-3">
+                  <p className="text-xs font-semibold text-warning">Overdue</p>
+                  <p className="mt-1 text-xl font-semibold text-warning">
+                    {analytics.overdueActionItemCount}
+                  </p>
+                </div>
+              </div>
+
+              {analytics.currentActionItems.length === 0 ? (
+                <div className="mt-5">
+                  <EmptyState message="No open action plan items." />
+                </div>
+              ) : (
+                <div className="mt-5 grid gap-3">
+                  {analytics.currentActionItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-2xl border border-border bg-white p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`rounded-full border px-3 py-1 text-xs font-semibold ${priorityTone(
+                            item.priority
+                          )}`}
+                        >
+                          {formatStatus(item.priority)}
+                        </span>
+                        {item.isOverdue ? (
+                          <span className="rounded-full border border-danger/20 bg-danger-soft px-3 py-1 text-xs font-semibold text-danger">
+                            Overdue
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-3 line-clamp-2 text-sm font-semibold text-foreground">
+                        {item.title}
+                      </p>
+                      <p className="mt-2 text-xs leading-5 text-muted">
+                        {item.storeName}
+                        {item.owner ? ` - ${item.owner}` : ''}
+                        {item.dueDate ? ` - Due ${formatDate(item.dueDate)}` : ''}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-2">
+            <article className="app-card rounded-2xl p-5 sm:p-6">
+              <p className="text-sm font-semibold text-primary">
+                Needs attention
               </p>
-            </section>
-          ) : null}
+              <h2 className="text-2xl font-semibold text-foreground">
+                Stores to watch
+              </h2>
+
+              {analytics.attentionStores.length === 0 ? (
+                <div className="mt-5">
+                  <EmptyState message="No stores need attention right now." />
+                </div>
+              ) : (
+                <div className="mt-5 grid gap-3">
+                  {analytics.attentionStores.map((store) => (
+                    <div
+                      key={`${store.storeCode}-${store.reason}`}
+                      className="rounded-2xl border border-border bg-white p-4"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {store.storeName} ({store.storeCode})
+                          </p>
+                          <p className="mt-1 text-sm text-muted">
+                            {store.reason}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full border px-3 py-1 text-xs font-semibold ${scoreBandTone(
+                            store.tone
+                          )}`}
+                        >
+                          {store.scoreLabel}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+
+            <article className="app-card rounded-2xl p-5 sm:p-6">
+              <p className="text-sm font-semibold text-primary">
+                Score focus
+              </p>
+              <h2 className="text-2xl font-semibold text-foreground">
+                Weakest checklist areas
+              </h2>
+
+              {analytics.weakestSections.length === 0 ? (
+                <div className="mt-5">
+                  <EmptyState message="No completed audit section data yet." />
+                </div>
+              ) : (
+                <div className="mt-5 grid gap-3">
+                  {analytics.weakestSections.map((section) => (
+                    <div
+                      key={section.title}
+                      className="rounded-2xl border border-border bg-white p-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {section.title}
+                          </p>
+                          <p className="mt-1 text-sm text-muted">
+                            {section.score}
+                          </p>
+                        </div>
+                        <p className="text-lg font-semibold text-foreground">
+                          {section.percentage}%
+                        </p>
+                      </div>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-soft">
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{
+                            width: `${Math.max(
+                              0,
+                              Math.min(100, section.percentage)
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+          </section>
 
           <section>
             <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
