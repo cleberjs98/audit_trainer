@@ -317,8 +317,7 @@ function ActionPlanAuditCallout({
   if (!canManageActionPlans) {
     return (
       <section className="rounded-2xl border border-border bg-surface p-4 text-sm text-muted shadow-sm">
-        No action plan has been created yet. Leaders can view action plans once
-        they are available.
+        No action plan has been created yet.
       </section>
     )
   }

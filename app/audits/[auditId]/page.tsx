@@ -349,7 +349,7 @@ export default async function AuditDetailPage({
       sections={sections}
       scorePreview={scorePreview}
       actionPlan={actionPlan ?? null}
-      canManageActionPlans={profile.role !== 'leader'}
+      canManageActionPlans={true}
     />
   )
 }

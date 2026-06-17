@@ -174,7 +174,7 @@ function canManageStore(profile: ProfileRow, store: StoreScopeRow) {
     return Boolean(profile.area_id && store.area_id === profile.area_id)
   }
 
-  if (profile.role === 'store_manager') {
+  if (profile.role === 'store_manager' || profile.role === 'leader') {
     return Boolean(profile.store_id && store.id === profile.store_id)
   }
 
@@ -216,13 +216,6 @@ async function loadPlanForManagement(
     }
   }
 
-  if (profile.role === 'leader') {
-    return {
-      plan: null,
-      error: 'Leaders can view action plans but cannot update them in V1.',
-    }
-  }
-
   const store = await loadStoreScope(supabase, plan.store_id)
 
   if (!store || !canManageStore(profile, store)) {
@@ -259,10 +252,6 @@ export async function createActionPlanForAuditAction(
 
   if (accessError || !profile) {
     return errorState(accessError ?? 'You cannot create this action plan.')
-  }
-
-  if (profile.role === 'leader') {
-    return errorState('Leaders can view action plans but cannot create them in V1.')
   }
 
   const { data: audit, error: auditError } = await supabase

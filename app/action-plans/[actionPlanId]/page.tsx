@@ -138,7 +138,7 @@ function canManageActionPlan(profile: ProfileRow, store: StoreRow) {
     return Boolean(profile.area_id && profile.area_id === store.area_id)
   }
 
-  if (profile.role === 'store_manager') {
+  if (profile.role === 'store_manager' || profile.role === 'leader') {
     return Boolean(profile.store_id && profile.store_id === store.id)
   }
 
@@ -150,10 +150,6 @@ function readOnlyReason(
   plan: ActionPlanRow,
   store: StoreRow
 ) {
-  if (profile.role === 'leader') {
-    return 'Leaders can view action plans for their store, but cannot create or update them in V1.'
-  }
-
   if (!canManageActionPlan(profile, store)) {
     return 'This action plan is outside your management scope.'
   }
