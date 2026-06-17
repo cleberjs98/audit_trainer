@@ -27,6 +27,10 @@ function getDashboardCards(profile: ProfileRow): DashboardCard[] {
   const isLeader = profile.role === 'leader'
   const canManageStores =
     profile.role === 'admin' || profile.role === 'area_manager'
+  const canManageTeam =
+    profile.role === 'admin' ||
+    profile.role === 'area_manager' ||
+    profile.role === 'store_manager'
 
   const cards: DashboardCard[] = [
     {
@@ -69,6 +73,19 @@ function getDashboardCards(profile: ProfileRow): DashboardCard[] {
     })
   }
 
+  if (canManageTeam) {
+    cards.push({
+      title: 'Team Management',
+      description:
+        profile.role === 'store_manager'
+          ? 'Invite leaders for your assigned store and manage pending invites.'
+          : 'Create scoped invitations and manage pending team access.',
+      action: 'Open Team Management',
+      note: 'Available',
+      href: '/team',
+    })
+  }
+
   return cards
 }
 
@@ -81,6 +98,10 @@ export function DashboardShell({
   const roleLabel = formatUserRole(profile.role)
   const canManageStores =
     profile.role === 'admin' || profile.role === 'area_manager'
+  const canManageTeam =
+    profile.role === 'admin' ||
+    profile.role === 'area_manager' ||
+    profile.role === 'store_manager'
   const sidebarItems = [
     { label: 'Dashboard', href: '/dashboard', active: true },
     { label: 'Start Audit', href: '/start-audit', active: false },
@@ -88,6 +109,9 @@ export function DashboardShell({
     { label: 'Action Plans', href: '/action-plans', active: false },
     ...(canManageStores
       ? [{ label: 'Stores', href: '/store-management', active: false }]
+      : []),
+    ...(canManageTeam
+      ? [{ label: 'Team', href: '/team', active: false }]
       : []),
   ]
 
