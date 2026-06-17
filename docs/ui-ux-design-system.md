@@ -53,7 +53,7 @@ Acessa lojas da própria área. Pode comparar performance entre lojas e ver acti
 Store Manager / Gerente
 Acessa relatórios da própria loja. Pode acompanhar score, histórico e plano de ação da loja.
 Leader
-Acessa todas as auditorias da própria loja para aprender, comparar e treinar. Pode criar auditorias, preencher checklist e consultar relatórios da loja.
+Acessa todas as auditorias da própria loja para aprender, comparar e treinar. Pode criar auditorias, preencher checklist, consultar relatórios e gerenciar action plans da própria loja.
 # 4. Paleta de Cores
 Token
 Hex
@@ -185,7 +185,7 @@ Dashboard desktop usa sidebar escura graphite com links claros, item ativo em Si
 - Objetivo: mostrar performance da loja e facilitar criação/consulta de auditorias.
 - Elementos: store selector, Average Score, Open Action Plans, Needs Focus, Start New Audit, Recent Audits.
 - Ação principal: consultar performance e iniciar auditoria quando necessário.
-- Leader pode ver auditorias da própria loja para aprender e comparar.
+- Leader pode ver auditorias e gerenciar action plans da própria loja para aprender, comparar e treinar.
 ## New Audit Screen
 - Objetivo: iniciar auditoria com dados corretos.
 - Campos: Store, Visit Date, Visit Time, MOD / Manager on Duty, Shift, Traffic Level, Visit Type, Initial Notes.

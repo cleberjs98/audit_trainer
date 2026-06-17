@@ -57,11 +57,38 @@ This document records which parts are deliberately simple for V1, why that is ac
 - Store Management is visible only to `admin` and `area_manager`.
 - The Action Plans card links to `/action-plans`.
 
-### Store Management V1
+### Team Management V1
+
+- `/team` is implemented for `admin`, `area_manager`, and `store_manager`.
+- Leaders are restricted from Team Management.
+- Admins can invite `admin`, `area_manager`, `store_manager`, and `leader`.
+- Area managers can invite `store_manager` and `leader` only for stores in their assigned area.
+- Store managers can invite `leader` only for their assigned store.
+- Pending invitations can be viewed and revoked inside the user's allowed scope.
+- The invite flow stores only `token_hash`; the raw token is not persisted.
+- The raw invite link is shown only once immediately after invite creation for the current dev/manual flow.
+- Email sending is deferred.
+- Request access is deferred to V2.
+- Multi-store manager support is deferred to V2.
+- Active user role/scope editing UI is not implemented yet.
+
+### Accept Invite V1
+
+- `/auth/callback` supports safe internal `next` redirects for invitation returns.
+- `/accept-invite` reads the token from the URL only to call the server-side acceptance flow.
+- `accept_invitation_v1(raw_token)` validates token hash, pending status, expiry, and authenticated email match.
+- Accepted tokens are single-use and the stored `token_hash` is never rendered.
+- Role and scope come from the invitation/RPC result, not from query parameters.
+
+### Store Management V2
 
 - `/store-management` is implemented for `admin` and `area_manager`.
 - Admin can create and update stores across all areas.
 - Area managers can create and update stores only inside their assigned area, backed by RLS migration 002.
+- Area managers cannot move an existing store to another area.
+- `stores.code` is the official Store Number.
+- Store records include operational contact, address, location, opening-hours, and notes fields.
+- `stores.store_manager_id` is optional and must reference a `store_manager` profile whose `profiles.store_id` already matches the store.
 - Store managers and leaders cannot access Store Management.
 - Store deletion is not implemented in V1.
 
@@ -151,7 +178,7 @@ Required post-deploy mobile test checklist:
 - Admins can manage all manual action plans.
 - Area managers can manage manual action plans for stores in their assigned area.
 - Store managers can manage manual action plans for their assigned store.
-- Leaders can view own-store action plans but cannot create or update action plans or items in V1.
+- Leaders can manage manual action plans for their assigned store.
 - Manual action items support description, owner, priority, due date, success measure, and status.
 - Action item create, edit, and status update are implemented for allowed roles while the parent plan is open or in progress.
 - Delete is not implemented in V1.
@@ -167,11 +194,11 @@ Required post-deploy mobile test checklist:
 
 ## 3. Intentional V1 Limitations
 
-### Store Management V1
+### Store Management V2
 
 - No delete.
 - No area management UI.
-- No user assignment UI yet.
+- Active user role/scope editing UI is not implemented yet.
 - No bulk import.
 - No advanced filtering or search.
 - Area managers can manage stores in their assigned area, but user assignment is separate.
@@ -180,14 +207,14 @@ These limits keep the first store-management surface small and aligned with the 
 
 ### User / Role Assignment
 
-- User and role assignment is not implemented yet.
-- It must remain separate from Start Audit.
-- Future rules:
-  - Admin can assign any user role, store, or area.
-  - Area managers can assign `store_manager` and `leader` only within their own area.
-  - Store managers can assign `leader` only within their own store.
-  - Leaders cannot assign users.
-- This requires a secure design and likely server actions or RPC plus a dedicated RLS review.
+- Controlled invitation is implemented in Team Management V1.
+- Invitation acceptance creates or updates the accepted user's profile with the invited role and scope.
+- Active user role/scope editing UI is not implemented yet.
+- Store managers cannot alter active user role or scope in V1.
+- Area managers can invite and assign `store_manager` and `leader` only within their own area through invitation scope.
+- Store managers can invite `leader` only within their own store.
+- Leaders cannot invite or assign users.
+- Request-access and multi-store-manager flows are deferred to V2.
 
 ### Start Audit V1
 
@@ -219,12 +246,14 @@ The current action writes `is_critical_flag = false` because there is no critica
 
 ### Leader Role
 
-- Older docs may still say leader is read-only.
 - The current business rule allows leaders to create and edit `draft` or `in_progress` audits for their own assigned store.
+- Leaders can complete unlocked `draft` or `in_progress` audits for their assigned store.
+- Leaders can create and manage manual action plans for their assigned store.
+- Leaders can create and update action plan items for own-store plans.
 - Leaders cannot access other stores.
 - Leaders cannot manage stores.
+- Leaders cannot access Team Management or invite users.
 - Leaders cannot upload photos in V1.
-- Leaders cannot update action plans or action plan items in V1.
 - Completed or locked audits remain read-only.
 
 ### Audit History
@@ -293,22 +322,20 @@ The current action writes `is_critical_flag = false` because there is no critica
 
 Some older documents still describe an earlier role model or earlier route plan. Treat the current migrations and implemented V1 flow as the current source for behavior until these docs are cleaned up.
 
-- `docs/app-bible.md` still contains leader read-only language in some sections, although the current V1 rule allows leaders to create and edit draft/in_progress audits for their own store.
 - `docs/engineering.md` contains old `auditor` and `manager` role examples and older schema snippets.
 - `docs/implementation-phases.md` contains old `Auditor` wording and older route examples such as `/audits/[id]/checklist`.
-- `docs/implementation-checklist.md` contains old leader test items that say leaders cannot create or edit checklist data.
-- `docs/database-schema-plan.md` still includes older leader read-only statements in places, while migrations 004 and 005 implement the newer Start Audit and Checklist V1 role model.
+- `docs/database-schema-plan.md` is an early consolidated schema plan and now includes update notes where migrations 004, 005, 012, and 013 changed leader/action-plan behavior.
 
-These should be updated after the new V1 role model is stable across the completed core audit flow.
+Keep these legacy planning docs in mind when implementing new phases; current migrations and app code are authoritative for behavior.
 
 ## 5. Recommended Next Implementation Order
 
-1. Update docs to remove old leader read-only wording
-2. Photo upload V1
-3. AI report generation
-4. PDF export
-5. AI-generated action plan recommendations
-6. User / Role Assignment
+1. Photo upload V1
+2. Email sending for invitations
+3. Active user role/scope editing UI
+4. AI report generation
+5. PDF export
+6. AI-generated action plan recommendations
 7. Analytics and comparison dashboards
 
 ## 6. Security Notes
@@ -319,7 +346,7 @@ These should be updated after the new V1 role model is stable across the complet
 - Do not trust client-provided role, scope, max score, snapshots, store ID, or audit ownership.
 - Do not trust a client-provided `audit_id` without reloading the audit server-side and checking role scope.
 - Completed or locked audits should not be edited through the normal UI.
-- User assignment must be implemented separately and audited before release.
+- Active user role/scope editing must be implemented separately and audited before release.
 - Start Audit must not become a user-assignment flow.
 - OpenAI and PDF generation must stay server-side.
 

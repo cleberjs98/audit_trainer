@@ -142,12 +142,13 @@ O Admin pode:
 - Ver e gerenciar todas as áreas
 - Ver todas as lojas
 - Criar e gerenciar todas as lojas
+- Gerenciar usuários, convites, roles e escopos
+- Convidar `admin`, `area_manager`, `store_manager` e `leader`
 - Ver dashboard analítico
 - Filtrar auditorias por loja, área, data, usuário e score
 - Abrir qualquer relatório final
 - Gerar ou regenerar planos de ação por IA
 - Exportar relatórios
-- Gerenciar usuários
 - Atribuir papéis aos usuários
 
 ### 6.2 Area Manager
@@ -157,9 +158,12 @@ O Area Manager pode:
 - Ver lojas, auditorias, relatórios e planos de ação da área atribuída
 - Criar novas lojas somente dentro da própria área
 - Atualizar lojas somente dentro da própria área
+- Convidar `store_manager` e `leader` somente para lojas da própria área
+- Atribuir store managers a lojas da própria área quando o perfil já está no escopo correto
 - Não criar nem atualizar áreas
 - Não ver lojas ou auditorias de outras áreas
 - Não alterar auditorias finalizadas
+- Não convidar `admin` ou `area_manager`
 
 ### 6.3 Store Manager
 
@@ -168,19 +172,28 @@ O Store Manager pode:
 - Ver apenas a própria loja
 - Criar, continuar e finalizar auditorias da própria loja
 - Adicionar notas e fotos em auditorias desbloqueadas da própria loja
-- Ver relatórios e planos de ação da própria loja
+- Criar e gerenciar planos de ação da própria loja
+- Criar e atualizar itens de plano de ação da própria loja
+- Convidar `leader` somente para a própria loja
+- Ver relatórios, performance e equipe da própria loja
 - Não criar lojas
 - Não ver lojas ou auditorias de outras lojas
+- Não alterar role ou escopo de usuários ativos em V1
 
 ### 6.4 Leader
 
 O Leader pode:
 
 - Ver apenas a própria loja
+- Criar, continuar e finalizar auditorias da própria loja
+- Editar auditorias `draft` ou `in_progress` da própria loja
 - Ver auditorias da própria loja para aprendizado e comparação
-- Ver relatórios e planos de ação da própria loja
+- Criar e gerenciar planos de ação da própria loja
+- Criar e atualizar itens de plano de ação da própria loja
+- Ver relatórios da própria loja
 - Não criar lojas
-- Não editar auditorias, respostas, fotos ou planos de ação
+- Não convidar usuários
+- Não ver dados de outras lojas
 
 ### Papéis oficiais
 
@@ -231,18 +244,24 @@ Cannot access other areas.
 ```txt
 Can read their own store only.
 Can create and manage unlocked audits for their own store.
+Can create and manage action plans and action plan items for their own store.
+Can invite leaders for their own store.
 Cannot create stores.
 Cannot access other stores.
 Cannot edit completed audits unless reopened by Admin.
+Cannot alter active user role/scope in V1.
 ```
 
 ### Leader
 
 ```txt
 Can read their own store only.
-Can read audits from their own store for learning and comparison.
+Can create and manage unlocked audits for their own store.
+Can read audits from their own store for learning, comparison and coaching.
+Can create and manage action plans and action plan items for their own store.
 Cannot create stores.
-Cannot edit audits, answers, photos or action plans.
+Cannot invite users.
+Cannot access other stores.
 ```
 
 ---
@@ -1034,6 +1053,20 @@ name
 code
 area_id
 is_active
+store_manager_id
+address_line_1
+address_line_2
+city
+county_or_state
+postcode
+country
+phone
+email
+opening_hours
+location_type
+terminal
+airside_landside
+location_notes
 created_at
 updated_at
 ```
@@ -1041,8 +1074,11 @@ updated_at
 Regras de gestão:
 
 ```txt
+stores.code is the official Store Number.
 Admin can create and update all stores.
 Area Manager can create and update stores only inside their assigned area.
+Area Manager cannot move a store to another area.
+store_manager_id is optional and must reference a store_manager profile assigned to the same store.
 Store Manager can only view their own store.
 Leader can only view their own store.
 Future stores should be created through the app, not by editing seed files.
@@ -1348,6 +1384,35 @@ Esses itens podem ser adicionados depois.
 
 ### 23.1 Status atual do V1 manual
 
+User & Access Management V1 esta implementado:
+
+- Migration 013 adicionou `user_invitations`, richer store fields e `stores.store_manager_id`.
+- `/team` permite criar convites e gerenciar pending invitations.
+- `/team` e acessivel para `admin`, `area_manager` e `store_manager`.
+- Leaders nao acessam Team Management e nao convidam usuarios.
+- Admin pode convidar todos os roles.
+- Area Manager pode convidar `store_manager` e `leader` somente para lojas da propria area.
+- Store Manager pode convidar `leader` somente para a propria loja.
+- Convites usam `token_hash`; o raw token nao e persistido.
+- O link manual com raw token aparece somente imediatamente apos criar convite em modo dev/manual.
+- Email sending e request access ficam para fases futuras.
+
+Invitation acceptance esta implementado:
+
+- `/auth/callback` suporta retorno seguro com `next` interno.
+- `/accept-invite` chama `accept_invitation_v1(raw_token)` com usuario autenticado.
+- O e-mail autenticado deve corresponder ao e-mail do convite.
+- Tokens sao single-use e nao expõem `token_hash`.
+
+Store Management V2 esta implementado:
+
+- `stores.code` e o Store Number oficial.
+- Stores possuem campos operacionais de endereco, contato, localizacao, opening hours e `store_manager_id`.
+- Admin pode criar e editar todas as lojas.
+- Area Manager pode criar e editar somente lojas da propria area e nao pode mover loja para outra area.
+- Store Manager e Leader nao acessam Store Management.
+- `store_manager_id` exige um perfil `store_manager` ja atribuido a mesma loja.
+
 Manual Action Plans V1 esta implementado:
 
 - `/action-plans` lista planos de acao no escopo do usuario.
@@ -1355,7 +1420,8 @@ Manual Action Plans V1 esta implementado:
 - O dashboard aponta para Action Plans.
 - Auditorias completed permitem criar ou abrir um plano de acao.
 - Planos manuais usam auditorias completed e um plano por auditoria.
-- Leaders podem visualizar planos da propria loja, mas nao editar em V1.
+- Leaders podem criar e gerenciar planos de acao da propria loja.
+- Leaders podem criar e atualizar itens de plano de acao da propria loja.
 - Nao ha delete em V1.
 
 Ainda nao implementado:
@@ -1363,6 +1429,10 @@ Ainda nao implementado:
 - AI-generated action plans.
 - PDF export.
 - Email sending.
+- Request access.
+- Multi-store managers.
+- Active user role/scope editing UI.
+- Per-role dashboard analytics.
 - Final mobile QA em ambiente deployado; testes locais por LAN/IP nao sao a fonte final de verdade.
 
 ---

@@ -5,7 +5,7 @@
 
 ## Section 1 — Final Verdict
 
-This document is the **single, authoritative V1 database schema** for Store Audit Trainer. It supersedes all previous drafts, all content in `engineering.md` section 7, and all "option A / option B" phrasing in earlier iterations of `database-schema-plan.md`. Every contradiction has been resolved. Every decision is stated once. This plan is ready for direct migration authoring.
+This document was the original consolidated V1 database schema plan for Store Audit Trainer. It remains useful historical context, but applied migrations are now authoritative where later migrations changed behavior. In particular, migrations 004, 005, 012, and 013 supersede older leader read-only and action-plan-management assumptions in this planning document.
 
 **Key decisions embodied in this plan:**
 
@@ -21,8 +21,8 @@ This document is the **single, authoritative V1 database schema** for Store Audi
 | 8 | `raw_ai_response` is NOT in V1. |
 | 9 | Helper functions are SECURITY DEFINER with fixed `search_path`. The function owner must be the `public.profiles` table owner or a role with the `BYPASSRLS` attribute. SECURITY DEFINER runs as the function owner — not automatically as superuser — and profiles RLS evaluates against the owner's role. A role with only SELECT on profiles is insufficient: profiles RLS would still fire, causing recursion or empty results. BYPASSRLS (or table ownership) is required so the helper bypasses profiles RLS entirely. |
 | 10 | Completed-audit locking via BEFORE UPDATE trigger with explicit USING/WITH CHECK RLS semantics. |
-| 11 | Leader is read-only on audits, answers, reports, action plans and action plan items. No UPDATE allowed for leader. |
-| 12 | Non-admin direct UPDATE on `action_plan_items` and `action_plans` is denied in V1. Store manager progress tracking requires a future server-side RPC. |
+| 11 | Superseded by later migrations: Leader is operational for own-store audits and own-store manual action plans. Leaders cannot access other stores, create stores, invite users, or upload photos in V1. |
+| 12 | Superseded by migration 012 and migration 013: scoped non-admin manual action-plan management is allowed for area managers, store managers, and leaders according to area/store scope. |
 | 13 | Storage access is server-side only in V1. No direct client reads or uploads. Signed URLs from DB-backed authorization only. |
 | 14 | `audit_questions` includes `question_key text NOT NULL UNIQUE` for idempotent seed. `areas(name)` has UNIQUE constraint. |
 | 15 | Migration must begin with `CREATE EXTENSION IF NOT EXISTS pgcrypto` before `gen_random_uuid()` usage. |
@@ -481,11 +481,11 @@ Used by: all RLS policies as the "admin bypass" condition in `USING` expressions
 - RLS is enabled on all 11 tables. No exceptions.
 - `service_role` bypasses RLS entirely (Supabase default). Used for `ai_reports` INSERT/UPDATE and `action_plans`/`action_plan_items` INSERT from the AI backend route.
 - All non-admin policies call the helper functions defined in Section 6.
-- **Leaders are read-only** on all data tables — they may not INSERT, UPDATE, or DELETE anything.
+- Later migrations supersede the original leader read-only assumption. Leaders can now create/edit own-store audits and manage own-store manual action plans, while RLS still blocks cross-store access.
 - "Own store" = `store_id = get_my_store_id()`
 - "Area stores" = `store_id IN (SELECT id FROM public.stores WHERE area_id = get_my_area_id())`
 - "Lock check (USING)" = checked against `OLD` row; `(SELECT is_locked FROM public.audits WHERE id = <child>.audit_id) = false`
-- All non-admin direct UPDATE on `action_plan_items` and `action_plans` is DENIED in V1. Progress tracking for store managers requires a future server-side RPC/route.
+- Scoped manual action-plan writes are allowed by migrations 012 and 013 for admin, area_manager, store_manager, and leader according to role scope.
 
 ---
 
@@ -621,11 +621,11 @@ Photos are immutable once uploaded. No UPDATE is allowed for any role.
 | Operation | admin | area_manager | store_manager | leader |
 |---|---|---|---|---|
 | SELECT | All rows | `store_id IN (area stores)` | `store_id = get_my_store_id()` | `store_id = get_my_store_id()` |
-| INSERT | Yes (also service_role) | No | No | No |
-| UPDATE | All rows | No | **Denied in V1** | No |
+| INSERT | Yes (also service_role) | Scoped to completed audits in own area | Scoped to completed audits in own store | Scoped to completed audits in own store |
+| UPDATE | All rows | Scoped to own-area open/in_progress plans | Scoped to own-store open/in_progress plans | Scoped to own-store open/in_progress plans |
 | DELETE | Yes | No | No | No |
 
-**V1 decision:** Non-admin direct UPDATE on `action_plans` is denied. If store managers need to update plan status, this must be implemented as a server-side RPC or API route in a later phase, which can enforce store ownership, allowed fields, and business rules. Admin manages plans directly.
+**Updated V1 decision after migrations 012 and 013:** manual action plans can be created and updated by admin, area_manager, store_manager, and leader within role scope. Plans can be created only for completed audits, one plan per audit, and non-admin DELETE remains denied.
 
 ---
 
@@ -634,11 +634,11 @@ Photos are immutable once uploaded. No UPDATE is allowed for any role.
 | Operation | admin | area_manager | store_manager | leader |
 |---|---|---|---|---|
 | SELECT | All rows | Via `action_plan_id → action_plans.store_id IN (area stores)` | Via `action_plan_id → action_plans.store_id = get_my_store_id()` | Via `action_plan_id → action_plans.store_id = get_my_store_id()` |
-| INSERT | Yes (also service_role) | No | No | No |
-| UPDATE | All rows | No | **Denied in V1** | **Denied in V1** |
+| INSERT | Yes (also service_role) | Scoped by parent own-area plan | Scoped by parent own-store plan | Scoped by parent own-store plan |
+| UPDATE | All rows | Scoped by parent own-area open/in_progress plan | Scoped by parent own-store open/in_progress plan | Scoped by parent own-store open/in_progress plan |
 | DELETE | Yes | No | No | No |
 
-**V1 decision:** Non-admin direct UPDATE on `action_plan_items` is denied in V1. Leader is read-only on all tables including this one. Store manager progress tracking (`status`, `completed_at`) must be implemented via a server-side RPC in a later phase. That RPC will validate role, store ownership, and restrict fields to `status` and `completed_at` only.
+**Updated V1 decision after migrations 012 and 013:** manual action-plan item create/update is allowed for admin, area_manager, store_manager, and leader within role scope while the parent plan is open or in progress. Non-admin DELETE remains denied. Completed action plans remain read-only for non-admin users.
 
 ---
 
@@ -751,18 +751,19 @@ Before generating a signed URL, the API route must:
 | `audit_answers` | RLS INSERT and UPDATE policies include: `(SELECT is_locked FROM public.audits WHERE id = audit_answers.audit_id) = false` for non-admin |
 | `audit_photos` | Non-admin direct INSERT is **denied** in V1. All uploads go through the server route (service role), which validates `is_locked = false` before inserting. |
 | `ai_reports` | Written only via service role (bypasses RLS). Backend route does not write to locked audits by application logic. |
-| `action_plans` | Non-admin direct UPDATE denied in V1 (see Section 7). |
-| `action_plan_items` | Non-admin direct UPDATE denied in V1 (see Section 7). Store manager progress tracking deferred to future server-side RPC. |
+| `action_plans` | Scoped non-admin UPDATE is allowed by migrations 012 and 013 for open/in_progress manual plans. |
+| `action_plan_items` | Scoped non-admin INSERT/UPDATE is allowed by migrations 012 and 013 while parent plan is open/in_progress. |
 
-### `action_plan_items` and `action_plans` — V1 Decision
+### `action_plan_items` and `action_plans` — Updated V1 Decision
 
-Non-admin direct UPDATE on `action_plan_items` and `action_plans` is **denied** in V1.
+The original plan denied non-admin direct UPDATE on `action_plan_items` and `action_plans`. Migrations 012 and 013 supersede that design for manual Action Plans V1.
 
-- **Leader:** read-only on all tables. No UPDATE allowed on any table.
-- **Store_manager:** progress tracking (`status`, `completed_at` on items) is a valid future product need, but granting direct UPDATE through the Supabase client in V1 would require column-level restriction that RLS cannot enforce. The safe V1 choice is to deny direct UPDATE and implement tracking via a server-side RPC in a later phase.
+- **Leader:** can manage own-store manual action plans and action plan items.
+- **Store_manager:** can manage own-store manual action plans and action plan items.
+- **Area_manager:** can manage manual action plans and action plan items for stores in their assigned area.
 - **Admin:** may UPDATE all columns on both tables at any time.
 
-This design is conservative. It does not prevent the feature — it defers the implementation to a controlled server route that can validate role, store ownership, allowed fields, and audit lock status atomically.
+The app still re-checks role and scope server-side before writing. RLS remains the final guard, and non-admin DELETE remains out of scope.
 
 ---
 
@@ -838,7 +839,7 @@ All blocking issues from the previous Codex audit have been resolved:
 | Previous issue | Resolution |
 |---|---|
 | C1 — `question_key` missing from `audit_questions` | Added `question_key text NOT NULL UNIQUE`; seed uses `ON CONFLICT (question_key)` |
-| C2 — leader UPDATE contradiction on `action_plan_items` | Leader is read-only everywhere. Direct non-admin UPDATE on `action_plan_items` denied in V1. |
+| C2 — leader UPDATE contradiction on `action_plan_items` | Superseded by migrations 012 and 013. Leaders can manage own-store manual action plans and action plan items, but cannot access other stores. |
 | C3 — `areas(name)` no UNIQUE constraint for seed | Added `UNIQUE (name)` to `areas` |
 | M1 — Missing CHECKs for `audit_questions` and `checklist_sections` | All missing CHECK constraints added to Section 4 |
 | M2 — `action_plans` UPDATE lock contradiction | Lock check removed; non-admin direct UPDATE denied in V1 |
@@ -847,7 +848,7 @@ All blocking issues from the previous Codex audit have been resolved:
 | S1 — SECURITY DEFINER helper ownership insufficient (SELECT only) | Clarified: owner must be profiles table owner or have BYPASSRLS. SELECT-only is insufficient. Updated Section 1 Decision 9 and Section 6. |
 | S2 — Non-admin direct profiles UPDATE permitted | Denied in V1 for all non-admin roles. profiles UPDATE table corrected. Server-route note added. |
 | S3 — Non-admin direct audit_photos INSERT permitted | Denied in V1 for all non-admin roles. All uploads server-route only via service role. |
-| S4 — Upload authorization used audited_by = auth.uid() | Replaced with role/store-scope authorization. area_manager is SELECT-only; leader denied in V1. |
+| S4 — Upload authorization used audited_by = auth.uid() | Replaced with role/store-scope authorization. Photo upload remains future work; leader photo upload remains denied in V1. |
 | S5 — Storage DELETE described as direct admin access | Clarified: admin DELETE also goes through server route/service role. No direct storage DELETE in V1. |
 | S6 — Storage path format ambiguous | Clarified: storage_path is bucket-relative (no bucket name prefix). Exact 3-segment path format documented. |
 | S7 — Score/N/A TypeScript misalignment undocumented | Added known V1 limitation note to Section 11: types/audit.ts null = N/A comment is wrong; isNa field needed in future. |

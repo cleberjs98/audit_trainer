@@ -37,7 +37,8 @@ Ao final de cada fase, confirmar sempre:
 
 - [ ] Audit History V1, Review / Complete Audit V1 e Manual Action Plans V1 implementados; antes de implementar Photos, AI, PDF, email, User / Role Assignment ou Analytics, revisar `docs/v1-limitations-and-upgrades.md`
 - [x] Visual identity refresh implementado e validado: Audit Trainer identity, Graphite + Signal Crimson, white/gray surfaces, dark dashboard sidebar, circular checklist stepper e segmented 0-5 core score selector
-- [ ] Após o core flow estabilizar, limpar drift documentado e remover linguagem antiga de leader read-only, auditor e manager dos documentos legados
+- [x] User & Access Management V1 implementado: migration 013, invitation acceptance, `/team` V1 invite/pending invitations, Store Management V2 e leader own-store Action Plans management
+- [ ] Após o core flow estabilizar, limpar drift restante de auditor/manager dos documentos legados
 
 ---
 
@@ -929,7 +930,8 @@ feat: add AI action plan generation
 - [x] Admin pode criar e atualizar action plans no escopo total
 - [x] Area Manager pode criar e atualizar action plans dentro da própria área
 - [x] Store Manager pode criar e atualizar action plans da própria store
-- [x] Leader apenas visualiza action plans em V1
+- [x] Leader pode criar e atualizar action plans da própria store
+- [x] Leader pode criar e atualizar action plan items da própria store
 - [x] Usuário sem permissão não altera status
 - [x] No delete in V1
 
@@ -1201,7 +1203,11 @@ fix: improve mobile usability
 
 - [ ] Vê auditorias da própria loja
 - [ ] Pode comparar auditorias da própria loja
+- [ ] Pode criar auditorias da própria loja
+- [ ] Pode gerenciar action plans da própria loja
+- [ ] Pode criar e atualizar action plan items da própria loja
 - [ ] Não cria stores
+- [ ] Não acessa Team Management nem convida usuários
 - [ ] Não vê outras lojas
 - [ ] Não acessa admin indevidamente
 
@@ -1238,7 +1244,12 @@ fix: harden security and RLS policies
 - [ ] Confirmar que consegue editar auditorias `draft`/`in_progress` da loja atribuída
 - [ ] Confirmar que não consegue adicionar foto
 - [ ] Confirmar que consegue finalizar auditorias desbloqueadas `draft`/`in_progress` da loja atribuída
+- [ ] Confirmar que consegue criar action plan para auditoria completed da loja atribuída
+- [ ] Confirmar que consegue criar e atualizar action plan items da loja atribuída
+- [ ] Confirmar que consegue atualizar status de action plan da loja atribuída
 - [ ] Confirmar que não acessa auditorias de outras lojas
+- [ ] Confirmar que não acessa action plans de outras lojas
+- [ ] Confirmar que não acessa `/team`
 - [ ] Confirmar que auditorias `completed`/locked ficam read-only
 - [ ] Ver relatório existente
 - [ ] Exportar PDF
