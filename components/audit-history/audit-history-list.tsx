@@ -1,7 +1,12 @@
 import Link from 'next/link'
 
 import type { PretSectionScores } from '@/components/checklist/types'
+import {
+  MobileAppHeader,
+  MobileBottomNav,
+} from '@/components/navigation/mobile-app-shell'
 import type { AuditScoreBand, AuditStatus } from '@/types/audit'
+import type { UserRole } from '@/types/user'
 
 export type AuditHistoryItem = {
   id: string
@@ -29,6 +34,7 @@ type AuditHistoryListProps = {
   activeStatus: AuditStatus | null
   activeScoreBand: AuditScoreBand | null
   searchQuery: string
+  userRole: UserRole
 }
 
 const STATUS_OPTIONS = [
@@ -208,13 +214,21 @@ export function AuditHistoryList({
   activeStatus,
   activeScoreBand,
   searchQuery,
+  userRole,
 }: AuditHistoryListProps) {
   const filteredAudits = filterBySearch(audits, searchQuery)
   const filtersActive = hasFilters(activeStatus, activeScoreBand, searchQuery)
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="app-topbar border-b px-4 py-4">
+      <MobileAppHeader
+        title="Audit History"
+        subtitle={`${filteredAudits.length} audits in scope`}
+        actionHref="/start-audit"
+        actionLabel="Start"
+      />
+
+      <header className="app-topbar hidden border-b px-4 py-4 lg:block">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
@@ -245,7 +259,7 @@ export function AuditHistoryList({
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-28 pt-5 sm:px-6 lg:gap-5 lg:px-8 lg:pb-8 lg:pt-6">
         <section className="app-card rounded-[1.5rem] p-5 sm:p-7">
           <p className="text-sm font-semibold text-primary">Audit History</p>
           <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -329,7 +343,7 @@ export function AuditHistoryList({
                         scoreBand: activeScoreBand,
                         searchQuery,
                       })}
-                      className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                    className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
                         isActive
                           ? 'border-primary bg-primary text-white'
                           : 'border-border bg-background text-foreground hover:border-primary hover:text-primary'
@@ -358,7 +372,7 @@ export function AuditHistoryList({
                         scoreBand: option.value,
                         searchQuery,
                       })}
-                      className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                    className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
                         isActive
                           ? 'border-primary bg-primary text-white'
                           : 'border-border bg-background text-foreground hover:border-primary hover:text-primary'
@@ -395,11 +409,11 @@ export function AuditHistoryList({
             {filteredAudits.map((audit) => (
               <article
                 key={audit.id}
-                className="app-card rounded-2xl p-4 transition hover:border-primary/30 hover:shadow-[0_18px_40px_rgba(23,26,31,0.10)]"
+                className="app-card rounded-[1.35rem] p-4 transition hover:border-primary/30 hover:shadow-[0_18px_40px_rgba(23,26,31,0.10)]"
               >
                 <div className="grid gap-4 xl:grid-cols-[1fr_18rem_auto] xl:items-center">
-                  <div className="flex items-start gap-4">
-                    <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-sm font-black text-primary">
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-sm font-black text-primary sm:size-12">
                       {audit.storeName.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0">
@@ -420,7 +434,7 @@ export function AuditHistoryList({
                           </span>
                         ) : null}
                       </div>
-                      <h2 className="mt-2 text-lg font-semibold text-foreground">
+                      <h2 className="mt-2 text-base font-semibold text-foreground sm:text-lg">
                         {audit.storeName}
                       </h2>
                       <p className="text-sm font-medium text-muted">
@@ -464,6 +478,7 @@ export function AuditHistoryList({
           </section>
         )}
       </section>
+      <MobileBottomNav role={userRole} active="audits" />
     </main>
   )
 }

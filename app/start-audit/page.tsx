@@ -7,6 +7,10 @@ import type {
   StartAuditStoreOption,
 } from '@/components/audit/types'
 import { MissingProfileDashboard } from '@/components/dashboard/dashboard-shell'
+import {
+  MobileAppHeader,
+  MobileBottomNav,
+} from '@/components/navigation/mobile-app-shell'
 import { formatUserRole, isUserRole, type ProfileRow } from '@/lib/auth/profile'
 import { createClient } from '@/lib/supabase/server'
 
@@ -43,7 +47,14 @@ function AssignmentNotice({
 }) {
   return (
     <main className="min-h-screen bg-background">
-      <header className="app-topbar border-b px-4 py-4">
+      <MobileAppHeader
+        title="Start Audit"
+        subtitle={title}
+        actionHref="/dashboard"
+        actionLabel="Home"
+      />
+
+      <header className="app-topbar hidden border-b px-4 py-4 lg:block">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
@@ -65,7 +76,7 @@ function AssignmentNotice({
         </div>
       </header>
 
-      <section className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
+      <section className="mx-auto w-full max-w-3xl px-4 pb-28 pt-6 sm:px-6 lg:pb-8 lg:pt-8">
         <div className="rounded-2xl border border-warning/20 bg-warning-soft p-5 text-warning shadow-sm">
           <p className="text-sm font-semibold">{title}</p>
           <h1 className="mt-2 text-2xl font-semibold">
@@ -180,7 +191,14 @@ export default async function StartAuditPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="app-topbar border-b px-4 py-4">
+      <MobileAppHeader
+        title="Start Audit"
+        subtitle={formatUserRole(profile.role)}
+        actionHref="/dashboard"
+        actionLabel="Home"
+      />
+
+      <header className="app-topbar hidden border-b px-4 py-4 lg:block">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
@@ -208,7 +226,7 @@ export default async function StartAuditPage() {
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 pb-28 pt-5 sm:px-6 lg:gap-6 lg:px-8 lg:pb-8 lg:pt-6">
         <section className="app-card overflow-hidden rounded-[1.5rem]">
           <div className="grid gap-0 lg:grid-cols-[1fr_18rem]">
             <div className="p-5 sm:p-7">
@@ -251,6 +269,7 @@ export default async function StartAuditPage() {
           fixedStore={fixedStore}
         />
       </section>
+      <MobileBottomNav role={profile.role} active="audits" />
     </main>
   )
 }

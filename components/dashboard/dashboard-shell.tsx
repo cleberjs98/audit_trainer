@@ -2,6 +2,10 @@ import Link from 'next/link'
 
 import { signOut } from '@/app/auth/actions'
 import { formatUserRole, type ProfileRow } from '@/lib/auth/profile'
+import {
+  MobileAppHeader,
+  MobileBottomNav,
+} from '@/components/navigation/mobile-app-shell'
 
 type DashboardShellProps = {
   email: string
@@ -308,39 +312,23 @@ export function DashboardShell({
       </aside>
 
       <div className="min-w-0">
-        <header className="app-topbar border-b px-4 py-4 lg:hidden">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
-              AT
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-foreground">
-                Audit Trainer
-              </p>
-              <p className="text-xs font-medium text-muted">
-                Store Audit Trainer
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-full border border-primary/20 bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
-              {roleLabel}
-            </span>
+        <MobileAppHeader
+          title="Audit Trainer"
+          subtitle={roleLabel}
+          userLabel={email}
+          rightSlot={
             <form action={signOut}>
               <button
                 type="submit"
-                className="min-h-10 rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="min-h-10 rounded-full border border-border bg-surface-soft px-3 text-xs font-semibold text-foreground shadow-sm transition hover:border-primary hover:text-primary focus:outline-none focus:ring-4 focus:ring-primary/15"
               >
                 Sign out
               </button>
             </form>
-          </div>
-        </div>
-        </header>
+          }
+        />
 
-        <section className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 pb-28 pt-5 sm:px-6 lg:gap-6 lg:px-8 lg:pb-8 lg:pt-6">
           <section className="app-card overflow-hidden rounded-[1.5rem]">
             <div className="grid gap-0 lg:grid-cols-[1fr_19rem]">
               <div className="p-5 sm:p-7">
@@ -389,9 +377,12 @@ export function DashboardShell({
             </div>
           </section>
 
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-2 md:gap-4 md:overflow-visible md:px-0 md:pb-0 xl:grid-cols-4">
             {analytics.metrics.map((metric) => (
-              <div key={metric.label} className="app-card rounded-2xl p-5">
+              <div
+                key={metric.label}
+                className="app-card min-w-[10.5rem] rounded-2xl p-4 md:min-w-0 md:p-5"
+              >
                 <div
                   className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${metricToneClass(
                     metric.tone
@@ -639,25 +630,25 @@ export function DashboardShell({
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
             {cards.map((card, index) => (
               <article
                 key={card.title}
-                className="app-card flex min-h-64 flex-col justify-between rounded-2xl p-5 transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_22px_50px_rgba(23,26,31,0.12)]"
+                className="app-card flex flex-col justify-between rounded-2xl p-4 transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_22px_50px_rgba(23,26,31,0.12)] sm:min-h-64 sm:p-5"
               >
                 <div>
-                  <div className="mb-5 flex items-center justify-between">
-                    <div className="flex size-12 items-center justify-center rounded-2xl bg-primary-soft text-base font-black text-primary">
+                  <div className="mb-4 flex items-center justify-between sm:mb-5">
+                    <div className="flex size-11 items-center justify-center rounded-2xl bg-primary-soft text-base font-black text-primary sm:size-12">
                       {String(index + 1).padStart(2, '0')}
                     </div>
                     <div className="rounded-full border border-border bg-surface-soft px-3 py-1 text-xs font-semibold text-muted">
                       {card.note}
                     </div>
                   </div>
-                  <h3 className="text-xl font-semibold text-foreground">
+                  <h3 className="text-lg font-semibold text-foreground sm:text-xl">
                     {card.title}
                   </h3>
-                  <p className="mt-3 text-sm leading-6 text-muted">
+                  <p className="mt-2 text-sm leading-6 text-muted sm:mt-3">
                     {card.description}
                   </p>
                 </div>
@@ -684,6 +675,7 @@ export function DashboardShell({
           </section>
         </section>
       </div>
+      <MobileBottomNav role={profile.role} active="dashboard" />
     </main>
   )
 }

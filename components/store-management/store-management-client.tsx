@@ -7,6 +7,10 @@ import {
   createStoreAction,
   updateStoreAction,
 } from '@/app/store-management/actions'
+import {
+  MobileAppHeader,
+  MobileBottomNav,
+} from '@/components/navigation/mobile-app-shell'
 import type {
   AreaOption,
   StoreManagementProfile,
@@ -576,7 +580,14 @@ export function StoreManagementClient({
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="app-topbar border-b px-4 py-4">
+      <MobileAppHeader
+        title="Store Management"
+        subtitle={`${stores.length} stores`}
+        actionHref="/dashboard"
+        actionLabel="Home"
+      />
+
+      <header className="app-topbar hidden border-b px-4 py-4 lg:block">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
@@ -601,7 +612,7 @@ export function StoreManagementClient({
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 pb-28 pt-5 sm:px-6 lg:gap-6 lg:px-8 lg:pb-8 lg:pt-6">
         <section className="app-card rounded-[1.5rem] p-5 sm:p-7">
           <p className="text-sm font-semibold text-primary">
             Store Management
@@ -616,8 +627,8 @@ export function StoreManagementClient({
           </p>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-3">
-          <div className="app-card rounded-2xl p-5">
+        <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0">
+          <div className="app-card min-w-[10rem] rounded-2xl p-4 sm:min-w-0 sm:p-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted">
               Total stores
             </p>
@@ -625,7 +636,7 @@ export function StoreManagementClient({
               {stores.length}
             </p>
           </div>
-          <div className="app-card rounded-2xl p-5">
+          <div className="app-card min-w-[10rem] rounded-2xl p-4 sm:min-w-0 sm:p-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted">
               Active stores
             </p>
@@ -633,7 +644,7 @@ export function StoreManagementClient({
               {activeStoreCount}
             </p>
           </div>
-          <div className="app-card rounded-2xl p-5">
+          <div className="app-card min-w-[10rem] rounded-2xl p-4 sm:min-w-0 sm:p-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted">
               Eligible managers
             </p>
@@ -682,6 +693,7 @@ export function StoreManagementClient({
           )}
         </section>
       </section>
+      <MobileBottomNav role={profile.role} active="stores" />
     </main>
   )
 }

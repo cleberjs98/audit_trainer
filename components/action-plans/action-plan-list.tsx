@@ -4,14 +4,20 @@ import {
   ActionPlanStatusBadge,
   ManualPlanBadge,
 } from '@/components/action-plans/action-plan-badges'
+import {
+  MobileAppHeader,
+  MobileBottomNav,
+} from '@/components/navigation/mobile-app-shell'
 import type {
   ActionPlanListItem,
   ActionPlanStatus,
 } from '@/components/action-plans/types'
+import type { UserRole } from '@/types/user'
 
 type ActionPlanListProps = {
   actionPlans: ActionPlanListItem[]
   activeStatus: ActionPlanStatus | null
+  userRole: UserRole
 }
 
 const STATUS_OPTIONS = [
@@ -54,6 +60,7 @@ function buildHref(status: ActionPlanStatus | null) {
 export function ActionPlanList({
   actionPlans,
   activeStatus,
+  userRole,
 }: ActionPlanListProps) {
   const openCount = actionPlans.filter((plan) => plan.status === 'open').length
   const inProgressCount = actionPlans.filter(
@@ -65,7 +72,14 @@ export function ActionPlanList({
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="app-topbar border-b px-4 py-4">
+      <MobileAppHeader
+        title="Action Plans"
+        subtitle={`${actionPlans.length} plans in scope`}
+        actionHref="/audits"
+        actionLabel="Audits"
+      />
+
+      <header className="app-topbar hidden border-b px-4 py-4 lg:block">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
@@ -96,7 +110,7 @@ export function ActionPlanList({
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-28 pt-5 sm:px-6 lg:gap-5 lg:px-8 lg:pb-8 lg:pt-6">
         <section className="app-card rounded-[1.5rem] p-5 sm:p-7">
           <p className="text-sm font-semibold text-primary">
             Manual Action Plans
@@ -120,13 +134,16 @@ export function ActionPlanList({
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 md:pb-0">
           {[
             { label: 'Open', value: openCount, tone: 'text-primary' },
             { label: 'In Progress', value: inProgressCount, tone: 'text-warning' },
             { label: 'Completed', value: completedCount, tone: 'text-success' },
           ].map((metric) => (
-            <div key={metric.label} className="app-card rounded-2xl p-5">
+            <div
+              key={metric.label}
+              className="app-card min-w-[9.5rem] rounded-2xl p-4 md:min-w-0 md:p-5"
+            >
               <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {metric.label}
               </p>
@@ -147,7 +164,7 @@ export function ActionPlanList({
                 <Link
                   key={option.label}
                   href={buildHref(option.value)}
-                  className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
                     isActive
                       ? 'border-primary bg-primary text-white'
                       : 'border-border bg-background text-foreground hover:border-primary hover:text-primary'
@@ -181,11 +198,11 @@ export function ActionPlanList({
             {actionPlans.map((plan) => (
               <article
                 key={plan.id}
-                className="app-card rounded-2xl p-4 transition hover:border-primary/30 hover:shadow-[0_18px_40px_rgba(23,26,31,0.10)]"
+                className="app-card rounded-[1.35rem] p-4 transition hover:border-primary/30 hover:shadow-[0_18px_40px_rgba(23,26,31,0.10)]"
               >
                 <div className="grid gap-4 lg:grid-cols-[1fr_22rem_auto] lg:items-center">
-                  <div className="flex items-start gap-4">
-                    <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-sm font-black text-primary">
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-sm font-black text-primary sm:size-12">
                       AP
                     </div>
                     <div>
@@ -193,7 +210,7 @@ export function ActionPlanList({
                         <ActionPlanStatusBadge status={plan.status} />
                         <ManualPlanBadge generatedByAi={plan.generatedByAi} />
                       </div>
-                      <h2 className="mt-2 text-lg font-semibold text-foreground">
+                      <h2 className="mt-2 text-base font-semibold text-foreground sm:text-lg">
                         {plan.storeName}
                       </h2>
                       <p className="text-sm font-medium text-muted">
@@ -237,6 +254,7 @@ export function ActionPlanList({
           </section>
         )}
       </section>
+      <MobileBottomNav role={userRole} active="action-plans" />
     </main>
   )
 }

@@ -234,6 +234,7 @@ export default async function ActionPlanDetailPage({
       actionPlan={buildDetailData(plan, store, audit, itemRows ?? [])}
       canManage={!reason}
       readOnlyReason={reason}
+      userRole={profile.role}
     />
   )
 }

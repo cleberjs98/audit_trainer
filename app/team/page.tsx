@@ -9,6 +9,10 @@ import type {
   TeamScopeOption,
 } from '@/components/team/types'
 import { MissingProfileDashboard } from '@/components/dashboard/dashboard-shell'
+import {
+  MobileAppHeader,
+  MobileBottomNav,
+} from '@/components/navigation/mobile-app-shell'
 import { isUserRole, type ProfileRow } from '@/lib/auth/profile'
 import { createClient } from '@/lib/supabase/server'
 
@@ -222,7 +226,13 @@ export default async function TeamPage() {
   if (!canManageTeam(profile)) {
     return (
       <main className="min-h-screen bg-background">
-        <header className="app-topbar border-b px-4 py-4">
+        <MobileAppHeader
+          title="Team Management"
+          subtitle="Access restricted"
+          actionHref="/dashboard"
+          actionLabel="Home"
+        />
+        <header className="app-topbar hidden border-b px-4 py-4 lg:block">
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
@@ -246,7 +256,7 @@ export default async function TeamPage() {
           </div>
         </header>
 
-        <section className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
+        <section className="mx-auto w-full max-w-3xl px-4 pb-28 pt-6 sm:px-6 lg:pb-8 lg:pt-8">
           <div className="rounded-2xl border border-warning/25 bg-warning-soft p-5">
             <p className="text-sm font-semibold text-warning">
               Access restricted
@@ -284,7 +294,14 @@ export default async function TeamPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="app-topbar border-b px-4 py-4">
+      <MobileAppHeader
+        title="Team Management"
+        subtitle={`${pendingInvitations.length} pending invites`}
+        actionHref="/dashboard"
+        actionLabel="Home"
+      />
+
+      <header className="app-topbar hidden border-b px-4 py-4 lg:block">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
@@ -310,7 +327,7 @@ export default async function TeamPage() {
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 pb-28 pt-5 sm:px-6 lg:gap-6 lg:px-8 lg:pb-8 lg:pt-6">
         <section className="app-card rounded-[1.5rem] p-5 sm:p-7">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
             Controlled access
@@ -345,6 +362,7 @@ export default async function TeamPage() {
           invitations={pendingInvitations}
         />
       </section>
+      <MobileBottomNav role={profile.role} active="more" />
     </main>
   )
 }

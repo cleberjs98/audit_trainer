@@ -69,7 +69,7 @@ function CopyableInviteLink({ state }: { state: TeamActionState }) {
         Share this link manually once, then create a new invitation if it is
         lost.
       </p>
-      <code className="mt-3 block overflow-x-auto rounded-xl border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground">
+      <code className="mt-3 block overflow-x-auto break-all rounded-xl border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground">
         {state.manualInviteLink}
       </code>
     </div>

@@ -24,6 +24,11 @@ import {
   type CompleteAuditState,
   type SaveAnswerState,
 } from '@/components/checklist/types'
+import {
+  MobileAppHeader,
+  MobileBottomNav,
+} from '@/components/navigation/mobile-app-shell'
+import type { UserRole } from '@/types/user'
 
 type AuditChecklistProps = {
   audit: ChecklistAudit
@@ -34,6 +39,7 @@ type AuditChecklistProps = {
     status: 'open' | 'in_progress' | 'completed'
   } | null
   canManageActionPlans: boolean
+  userRole: UserRole
 }
 
 type WizardMode = 'question' | 'review'
@@ -596,7 +602,7 @@ function QuestionInput({
         <legend className="text-sm font-semibold text-foreground">
           Score
         </legend>
-        <div className="grid grid-cols-6 gap-2">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
           {Array.from({ length: question.maxScore + 1 }, (_, score) => {
             const value = String(score)
             const selected = draft.score === value
@@ -858,6 +864,7 @@ export function AuditChecklist({
   scorePreview,
   actionPlan,
   canManageActionPlans,
+  userRole,
 }: AuditChecklistProps) {
   const initialAnswers = useMemo(() => initialAnswerMap(sections), [sections])
   const initialQuestions = useMemo(
@@ -1017,7 +1024,13 @@ export function AuditChecklist({
 
   return (
     <main className="relative z-10 pointer-events-auto bg-background">
-      <section className="relative z-10 mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-4 sm:px-6">
+      <MobileAppHeader
+        title="Audit Checklist"
+        subtitle={audit.store.name}
+        actionHref="/audits"
+        actionLabel="History"
+      />
+      <section className="relative z-10 mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 pb-28 pt-4 sm:px-6 lg:pb-8">
         <nav
           aria-label="Audit navigation"
           className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
@@ -1036,7 +1049,7 @@ export function AuditChecklist({
           </Link>
         </nav>
 
-        <section className="sticky top-0 z-30 rounded-b-[1.5rem] border border-t-0 border-border bg-surface/95 p-4 shadow-[0_18px_45px_rgba(23,26,31,0.10)] backdrop-blur">
+        <section className="sticky top-0 z-30 rounded-[1.5rem] border border-border bg-surface/95 p-4 shadow-[0_18px_45px_rgba(23,26,31,0.10)] backdrop-blur">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">
@@ -1046,7 +1059,7 @@ export function AuditChecklist({
                     ? `Question ${boundedStepIndex + 1} of ${questions.length}`
                     : 'Checklist'}
               </p>
-              <p className="mt-1 text-2xl font-semibold text-foreground">
+              <p className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">
                 {audit.maxScore > 0
                   ? persistedScoreLabel(audit)
                   : scoreLabel(preview)}
@@ -1062,7 +1075,7 @@ export function AuditChecklist({
 
           <div
             aria-hidden="true"
-            className="mt-3 h-2 overflow-hidden rounded-full bg-background"
+            className="mt-3 h-2.5 overflow-hidden rounded-full bg-background"
           >
             <div
               className="h-full rounded-full bg-primary transition-all"
@@ -1075,7 +1088,7 @@ export function AuditChecklist({
               <div className="relative overflow-x-auto pb-2 pt-2">
                 <div
                   aria-hidden="true"
-                  className="absolute left-6 right-6 top-7 h-0.5 rounded-full bg-border"
+                  className="absolute left-6 right-6 top-7 h-1 rounded-full bg-border"
                 />
                 <div className="relative flex min-w-max gap-3 px-1">
                 {questions.map((question, index) => {
@@ -1170,8 +1183,8 @@ export function AuditChecklist({
               onQuestionSelect={handleJumpToStep}
             />
           ) : currentQuestion ? (
-            <section className="app-card rounded-[1.5rem] p-4">
-              <article className="rounded-[1.35rem] border border-border bg-white p-5 shadow-sm">
+            <section className="app-card rounded-[1.5rem] p-3 sm:p-4">
+              <article className="rounded-[1.35rem] border border-border bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full border border-primary/20 bg-primary-soft px-2 py-1 text-xs font-semibold text-primary">
@@ -1191,7 +1204,7 @@ export function AuditChecklist({
                     </span>
                   </div>
 
-                  <h2 className="text-2xl font-semibold leading-8 text-foreground">
+                  <h2 className="text-xl font-semibold leading-7 text-foreground sm:text-2xl sm:leading-8">
                     {currentQuestion.displayNumber
                       ? `${currentQuestion.displayNumber}. `
                       : ''}
@@ -1218,7 +1231,7 @@ export function AuditChecklist({
                   <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
                     Notes
                     <textarea
-                      rows={4}
+                      rows={3}
                       disabled={readOnly}
                       value={
                         drafts[currentQuestion.id]?.comment ??
@@ -1281,6 +1294,7 @@ export function AuditChecklist({
           )}
         </div>
       </section>
+      <MobileBottomNav role={userRole} active="audits" />
     </main>
   )
 }

@@ -228,6 +228,7 @@ export default async function AuditHistoryPage({
       activeStatus={activeStatus}
       activeScoreBand={activeScoreBand}
       searchQuery={searchQuery}
+      userRole={profile.role}
     />
   )
 }

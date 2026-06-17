@@ -15,6 +15,10 @@ import {
   ManualPlanBadge,
 } from '@/components/action-plans/action-plan-badges'
 import { ActionPlanItemForm } from '@/components/action-plans/action-plan-item-form'
+import {
+  MobileAppHeader,
+  MobileBottomNav,
+} from '@/components/navigation/mobile-app-shell'
 import type {
   ActionItemStatus,
   ActionPlanActionState,
@@ -22,11 +26,13 @@ import type {
   ActionPlanStatus,
 } from '@/components/action-plans/types'
 import { initialActionPlanActionState } from '@/components/action-plans/types'
+import type { UserRole } from '@/types/user'
 
 type ActionPlanDetailProps = {
   actionPlan: ActionPlanDetailData
   canManage: boolean
   readOnlyReason: string | null
+  userRole: UserRole
 }
 
 function formatDate(value: string | null) {
@@ -68,6 +74,7 @@ export function ActionPlanDetail({
   actionPlan,
   canManage,
   readOnlyReason,
+  userRole,
 }: ActionPlanDetailProps) {
   const router = useRouter()
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
@@ -118,7 +125,14 @@ export function ActionPlanDetail({
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="app-topbar border-b px-4 py-4">
+      <MobileAppHeader
+        title="Action Plan"
+        subtitle={actionPlan.storeName}
+        actionHref="/action-plans"
+        actionLabel="Plans"
+      />
+
+      <header className="app-topbar hidden border-b px-4 py-4 lg:block">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
@@ -151,7 +165,7 @@ export function ActionPlanDetail({
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-28 pt-5 sm:px-6 lg:gap-5 lg:px-8 lg:pb-8 lg:pt-6">
         <section className="app-card overflow-hidden rounded-[1.5rem]">
           <div className="grid gap-0 lg:grid-cols-[1fr_20rem]">
             <div className="p-5 sm:p-7">
@@ -203,15 +217,15 @@ export function ActionPlanDetail({
           </section>
         ) : null}
 
-        <section className="grid gap-4 lg:grid-cols-4">
-          <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+        <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 lg:pb-0">
+          <div className="min-w-[12rem] rounded-2xl border border-border bg-surface p-4 shadow-sm lg:min-w-0">
             <p className="text-xs font-semibold text-muted">Store</p>
             <p className="mt-1 text-base font-semibold text-foreground">
               {actionPlan.storeName}
             </p>
             <p className="mt-1 text-xs text-muted">Code {actionPlan.storeCode}</p>
           </div>
-          <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+          <div className="min-w-[12rem] rounded-2xl border border-border bg-surface p-4 shadow-sm lg:min-w-0">
             <p className="text-xs font-semibold text-muted">Audit visit</p>
             <p className="mt-1 text-base font-semibold text-foreground">
               {formatDate(actionPlan.auditVisitDate)}
@@ -220,7 +234,7 @@ export function ActionPlanDetail({
               Completed {formatDate(actionPlan.auditCompletedAt)}
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+          <div className="min-w-[12rem] rounded-2xl border border-border bg-surface p-4 shadow-sm lg:min-w-0">
             <p className="text-xs font-semibold text-muted">Audit score</p>
             <p className="mt-1 text-base font-semibold text-foreground">
               {scoreLabel(actionPlan)}
@@ -229,7 +243,7 @@ export function ActionPlanDetail({
               {actionPlan.auditScoreBand ?? 'No score band'}
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+          <div className="min-w-[12rem] rounded-2xl border border-border bg-surface p-4 shadow-sm lg:min-w-0">
             <p className="text-xs font-semibold text-muted">Created</p>
             <p className="mt-1 text-base font-semibold text-foreground">
               {formatDate(actionPlan.createdAt)}
@@ -364,7 +378,7 @@ export function ActionPlanDetail({
                     </dl>
 
                     {canManage ? (
-                      <div className="flex flex-col gap-2 sm:flex-row">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                         <button
                           type="button"
                           onClick={() => setEditingItemId(item.id)}
@@ -399,6 +413,7 @@ export function ActionPlanDetail({
           )}
         </section>
       </section>
+      <MobileBottomNav role={userRole} active="action-plans" />
     </main>
   )
 }

@@ -216,6 +216,7 @@ export default async function ActionPlansPage({
     <ActionPlanList
       actionPlans={buildItems(plans, stores, audits, items)}
       activeStatus={activeStatus}
+      userRole={profile.role}
     />
   )
 }

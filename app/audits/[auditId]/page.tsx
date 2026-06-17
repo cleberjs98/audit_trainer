@@ -350,6 +350,7 @@ export default async function AuditDetailPage({
       scorePreview={scorePreview}
       actionPlan={actionPlan ?? null}
       canManageActionPlans={true}
+      userRole={profile.role}
     />
   )
 }
