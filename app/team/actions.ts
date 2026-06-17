@@ -8,7 +8,12 @@ import type {
   InvitationRole,
   TeamActionState,
 } from '@/components/team/types'
-import { isUserRole, type ProfileRow } from '@/lib/auth/profile'
+import {
+  formatUserRole,
+  isUserRole,
+  type ProfileRow,
+} from '@/lib/auth/profile'
+import { sendInvitationEmail } from '@/lib/email/invitations'
 import { createClient } from '@/lib/supabase/server'
 
 const INVITATION_ROLES = [
@@ -23,6 +28,17 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 type StoreScopeRow = {
   id: string
   area_id: string
+}
+
+type AreaLabelRow = {
+  id: string
+  name: string
+}
+
+type StoreLabelRow = {
+  id: string
+  name: string
+  code: string
 }
 
 type InvitationInsert = {
@@ -42,9 +58,23 @@ function errorState(message: string): TeamActionState {
 
 function successState(
   message: string,
-  manualInviteLink?: string
+  manualInviteLink?: string,
+  emailDelivery?: TeamActionState['emailDelivery']
 ): TeamActionState {
-  return { status: 'success', message, manualInviteLink }
+  return { status: 'success', message, manualInviteLink, emailDelivery }
+}
+
+function warningState(
+  message: string,
+  manualInviteLink: string,
+  emailDelivery: TeamActionState['emailDelivery']
+): TeamActionState {
+  return {
+    status: 'warning',
+    message,
+    manualInviteLink,
+    emailDelivery,
+  }
 }
 
 function getText(formData: FormData, key: string) {
@@ -73,6 +103,23 @@ function createRawToken() {
 
 function createManualInviteLink(rawToken: string) {
   return `/accept-invite?token=${encodeURIComponent(rawToken)}`
+}
+
+function createAbsoluteInviteLink(rawToken: string) {
+  const appBaseUrl = process.env.APP_BASE_URL?.trim()
+
+  if (!appBaseUrl) {
+    return null
+  }
+
+  try {
+    const url = new URL('/accept-invite', appBaseUrl)
+    url.searchParams.set('token', rawToken)
+
+    return url.toString()
+  } catch {
+    return null
+  }
 }
 
 function canOpenTeam(profile: ProfileRow) {
@@ -136,6 +183,41 @@ async function loadStoreScope(
   }
 
   return store
+}
+
+async function loadInvitationScopeLabel(
+  supabase: SupabaseServerClient,
+  role: InvitationRole,
+  areaId: string | null,
+  storeId: string | null
+) {
+  if (role === 'admin') {
+    return 'All areas and stores'
+  }
+
+  if (areaId) {
+    const { data: area } = await supabase
+      .from('areas')
+      .select('id, name')
+      .eq('id', areaId)
+      .maybeSingle<AreaLabelRow>()
+
+    return area?.name ? `Area: ${area.name}` : 'Area scope'
+  }
+
+  if (storeId) {
+    const { data: store } = await supabase
+      .from('stores')
+      .select('id, name, code')
+      .eq('id', storeId)
+      .maybeSingle<StoreLabelRow>()
+
+    return store?.name
+      ? `Store: ${store.name} (${store.code})`
+      : 'Store scope'
+  }
+
+  return 'Scoped invitation'
 }
 
 async function resolveInviteScope(
@@ -284,9 +366,52 @@ export async function createInvitationAction(
 
   revalidatePath('/team')
 
-  return successState(
-    'Invitation created. Email sending is not connected yet, so use this development invite link once.',
-    createManualInviteLink(rawToken)
+  const absoluteInviteLink = createAbsoluteInviteLink(rawToken)
+  const manualInviteLink = absoluteInviteLink ?? createManualInviteLink(rawToken)
+  const scopeLabel = await loadInvitationScopeLabel(
+    supabase,
+    requestedRole,
+    scope.areaId,
+    scope.storeId
+  )
+  const roleLabel = formatUserRole(requestedRole)
+
+  if (!absoluteInviteLink) {
+    return successState(
+      'Invitation created. Email sending is not configured yet. Copy and share this development invite link manually.',
+      manualInviteLink,
+      'skipped'
+    )
+  }
+
+  const emailResult = await sendInvitationEmail({
+    to: email,
+    inviteUrl: absoluteInviteLink,
+    roleLabel,
+    scopeLabel,
+    expiresAt,
+  })
+
+  if (emailResult.status === 'sent') {
+    return successState(
+      `Invitation created and sent to ${email}.`,
+      undefined,
+      'sent'
+    )
+  }
+
+  if (emailResult.status === 'skipped') {
+    return successState(
+      'Invitation created. Email sending is not configured yet. Copy and share this development invite link manually.',
+      manualInviteLink,
+      'skipped'
+    )
+  }
+
+  return warningState(
+    'Invitation created, but email could not be sent. Copy and share this development invite link manually.',
+    manualInviteLink,
+    'failed'
   )
 }
 
@@ -322,5 +447,5 @@ export async function revokeInvitationAction(
 
   revalidatePath('/team')
 
-  return successState('Invitation revoked.')
+  return successState('Invitation cancelled.')
 }

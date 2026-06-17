@@ -48,8 +48,15 @@ function formatDateTime(value: string) {
   }).format(date)
 }
 
+function formatInvitationStatus(status: PendingInvitation['status']) {
+  return status
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 function CopyableInviteLink({ state }: { state: TeamActionState }) {
-  if (state.status !== 'success' || !state.manualInviteLink) {
+  if (!state.manualInviteLink) {
     return null
   }
 
@@ -59,8 +66,8 @@ function CopyableInviteLink({ state }: { state: TeamActionState }) {
         Development invite link
       </p>
       <p className="mt-2 text-sm leading-6 text-muted-strong">
-        Email sending is not implemented yet. Share this link manually once,
-        then create a new invitation if it is lost.
+        Share this link manually once, then create a new invitation if it is
+        lost.
       </p>
       <code className="mt-3 block overflow-x-auto rounded-xl border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground">
         {state.manualInviteLink}
@@ -83,7 +90,7 @@ function RevokeInvitationForm({ invitationId }: { invitationId: string }) {
         disabled={isPending}
         className="inline-flex min-h-10 items-center justify-center rounded-xl border border-danger/20 bg-danger-soft px-4 text-sm font-semibold text-danger transition hover:border-danger/40 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isPending ? 'Revoking...' : 'Revoke'}
+        {isPending ? 'Cancelling...' : 'Cancel invite'}
       </button>
       {state.message ? (
         <p
@@ -131,7 +138,7 @@ export function TeamManagementClient({
   )
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.9fr)]">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
       <section className="app-card rounded-[1.5rem] p-5 sm:p-6">
         <div>
           <p className="text-sm font-semibold text-primary">
@@ -254,22 +261,14 @@ export function TeamManagementClient({
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-info/15 bg-info-soft p-4">
-            <p className="text-sm font-semibold text-info">
-              Scope is checked on the server
-            </p>
-            <p className="mt-1 text-sm leading-6 text-muted-strong">
-              The form adjusts by role, but the server action and database RLS
-              are the final guard for allowed roles and stores.
-            </p>
-          </div>
-
           {state.message ? (
             <div
               role="status"
               className={`rounded-2xl border p-4 text-sm font-semibold ${
                 state.status === 'error'
                   ? 'border-danger/20 bg-danger-soft text-danger'
+                  : state.status === 'warning'
+                    ? 'border-warning/25 bg-warning-soft text-warning'
                   : 'border-success/20 bg-success-soft text-success'
               }`}
             >
@@ -290,43 +289,6 @@ export function TeamManagementClient({
       </section>
 
       <section className="app-card rounded-[1.5rem] p-5 sm:p-6">
-        <p className="text-sm font-semibold text-primary">
-          V1 permissions
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold text-foreground">
-          Controlled invites only
-        </h2>
-        <div className="mt-4 grid gap-3">
-          <div className="rounded-2xl border border-border bg-surface-soft p-4">
-            <p className="text-sm font-semibold text-foreground">
-              Admin
-            </p>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Can invite every role and revoke pending invitations.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border bg-surface-soft p-4">
-            <p className="text-sm font-semibold text-foreground">
-              Area Manager
-            </p>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Can invite Store Managers and Leaders only inside their assigned
-              area.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border bg-surface-soft p-4">
-            <p className="text-sm font-semibold text-foreground">
-              Store Manager
-            </p>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Can invite Leaders only for their own store. Active user
-              reassignment is not included in V1.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="app-card rounded-[1.5rem] p-5 sm:p-6 lg:col-span-2">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-primary">
@@ -362,7 +324,7 @@ export function TeamManagementClient({
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-full border border-warning/25 bg-warning-soft px-3 py-1 text-xs font-semibold text-warning">
-                        {invitation.status}
+                        {formatInvitationStatus(invitation.status)}
                       </span>
                       <span className="rounded-full border border-primary/20 bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
                         {formatUserRole(invitation.role)}

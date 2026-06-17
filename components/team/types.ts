@@ -5,9 +5,10 @@ export type InvitationRole = UserRole
 export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
 
 export type TeamActionState = {
-  status: 'idle' | 'success' | 'error'
+  status: 'idle' | 'success' | 'warning' | 'error'
   message: string
   manualInviteLink?: string
+  emailDelivery?: 'sent' | 'skipped' | 'failed'
 }
 
 export const initialTeamActionState: TeamActionState = {
