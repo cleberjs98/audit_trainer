@@ -119,23 +119,23 @@ export function ActionPlanList({
       </header>
 
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-28 pt-5 sm:px-6 lg:gap-5 lg:px-8 lg:pb-8 lg:pt-6">
-        <section className="app-card rounded-[1.5rem] p-5 sm:p-7">
-          <p className="text-sm font-semibold text-primary">
+        <section className="rounded-[1.5rem] border border-white/10 bg-info p-5 text-white shadow-[0_18px_45px_rgba(23,26,31,0.14)] lg:border-border lg:bg-surface lg:text-foreground lg:shadow-[0_14px_38px_rgba(23,26,31,0.07)] sm:p-7">
+          <p className="text-sm font-semibold text-primary-soft lg:text-primary">
             Manual Action Plans
           </p>
           <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h1 className="text-3xl font-semibold text-foreground">
+              <h1 className="text-3xl font-semibold text-white lg:text-foreground">
                 Track follow-up work
               </h1>
-              <p className="mt-3 max-w-3xl text-base leading-7 text-muted">
+              <p className="mt-3 max-w-3xl text-base leading-7 text-slate-300 lg:text-muted">
                 Review manual action plans created from completed audits. AI
                 generation is not included in V1.
               </p>
             </div>
-            <div className="rounded-2xl border border-border bg-surface-soft px-4 py-3">
-              <p className="text-xs font-semibold text-muted">Showing</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">
+            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 lg:border-border lg:bg-surface-soft">
+              <p className="text-xs font-semibold text-slate-300 lg:text-muted">Showing</p>
+              <p className="mt-1 text-lg font-semibold text-white lg:text-foreground">
                 {actionPlans.length} plans
               </p>
             </div>

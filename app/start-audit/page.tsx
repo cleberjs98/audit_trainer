@@ -227,21 +227,21 @@ export default async function StartAuditPage() {
       </header>
 
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 pb-28 pt-5 sm:px-6 lg:gap-6 lg:px-8 lg:pb-8 lg:pt-6">
-        <section className="app-card overflow-hidden rounded-[1.5rem]">
+        <section className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-info text-white shadow-[0_18px_45px_rgba(23,26,31,0.14)] lg:border-border lg:bg-surface lg:text-foreground lg:shadow-[0_14px_38px_rgba(23,26,31,0.07)]">
           <div className="grid gap-0 lg:grid-cols-[1fr_18rem]">
             <div className="p-5 sm:p-7">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary-soft lg:text-primary">
                 Start Audit
               </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-foreground">
                 Set up the visit.
               </h1>
-              <p className="mt-3 max-w-3xl text-base leading-7 text-muted">
+              <p className="mt-3 max-w-3xl text-base leading-7 text-slate-300 lg:text-muted">
                 Choose the store, timing, and visit context. The next step opens
                 the guided checklist for the selected store.
               </p>
             </div>
-            <div className="border-t border-border bg-info p-5 text-white lg:border-l lg:border-t-0 sm:p-7">
+            <div className="border-t border-white/10 bg-white/10 p-5 text-white lg:border-l lg:border-t-0 lg:border-border lg:bg-info sm:p-7">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
                 Next
               </p>

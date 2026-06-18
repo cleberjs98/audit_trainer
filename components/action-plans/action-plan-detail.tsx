@@ -175,12 +175,12 @@ export function ActionPlanDetail({
       </header>
 
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-28 pt-5 sm:px-6 lg:gap-5 lg:px-8 lg:pb-8 lg:pt-6">
-        <section className="app-card overflow-hidden rounded-[1.5rem]">
+        <section className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-info text-white shadow-[0_18px_45px_rgba(23,26,31,0.14)] lg:border-border lg:bg-surface lg:text-foreground lg:shadow-[0_14px_38px_rgba(23,26,31,0.07)]">
           <div className="grid gap-0 lg:grid-cols-[1fr_20rem]">
             <div className="p-5 sm:p-7">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex items-start gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-primary-soft lg:border-primary/20 lg:bg-primary-soft lg:text-primary">
                     <ListChecks aria-hidden="true" className="size-6" />
                   </div>
                   <div>
@@ -188,10 +188,10 @@ export function ActionPlanDetail({
                       <ActionPlanStatusBadge status={actionPlan.status} />
                       <ManualPlanBadge generatedByAi={actionPlan.generatedByAi} />
                     </div>
-                    <h1 className="mt-3 text-3xl font-semibold text-foreground">
+                    <h1 className="mt-3 text-3xl font-semibold text-white lg:text-foreground">
                       {actionPlan.focusArea ?? 'Manual Action Plan'}
                     </h1>
-                    <p className="mt-3 max-w-3xl text-base leading-7 text-muted">
+                    <p className="mt-3 max-w-3xl text-base leading-7 text-slate-300 lg:text-muted">
                       {actionPlan.summary ??
                         'Track manual follow-up actions for this completed audit.'}
                     </p>
@@ -199,7 +199,7 @@ export function ActionPlanDetail({
                 </div>
               </div>
             </div>
-            <div className="border-t border-border bg-info p-5 text-white lg:border-l lg:border-t-0 sm:p-7">
+            <div className="border-t border-white/10 bg-white/10 p-5 text-white lg:border-l lg:border-t-0 lg:border-border lg:bg-info sm:p-7">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
                 Item progress
               </p>

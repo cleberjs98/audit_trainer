@@ -97,7 +97,7 @@ export function MobileAppHeader({
   rightSlot,
 }: MobileAppHeaderProps) {
   return (
-    <header className="border-b border-border bg-surface/95 px-4 py-4 shadow-[0_12px_30px_rgba(23,26,31,0.08)] backdrop-blur lg:hidden">
+    <header className="border-b border-border bg-surface/95 px-4 py-4 shadow-[0_14px_34px_rgba(23,26,31,0.10)] ring-1 ring-white/70 backdrop-blur lg:hidden">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-sm font-black text-white shadow-[0_10px_24px_rgba(209,31,58,0.22)]">
@@ -132,7 +132,7 @@ export function MobileAppHeader({
                 aria-label={
                   userLabel ? `Signed in as ${userLabel}` : 'Audit Trainer'
                 }
-                className="flex size-10 items-center justify-center rounded-full border border-border bg-surface-soft text-xs font-black text-primary"
+                className="flex size-10 items-center justify-center rounded-full border border-border bg-info-soft text-xs font-black text-primary shadow-sm"
               >
                 {initials(userLabel)}
               </div>
@@ -148,7 +148,7 @@ export function MobileBottomNav({ role, active }: MobileBottomNavProps) {
   return (
     <nav
       aria-label="Mobile app navigation"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-14px_34px_rgba(23,26,31,0.14)] backdrop-blur lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_38px_rgba(23,26,31,0.16)] ring-1 ring-white/70 backdrop-blur lg:hidden"
     >
       <div className="mx-auto flex max-w-md items-center justify-around gap-1">
         {mobileNavItems(role, active).map((item) => {

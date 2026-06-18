@@ -23,22 +23,24 @@ function roleLabel(role: string) {
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="app-shell flex min-h-screen items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
-      <section className="w-full max-w-xl rounded-[1.75rem] border border-border bg-surface p-6 shadow-[0_24px_70px_rgba(23,26,31,0.14)] sm:p-8">
-        <div className="mb-7 flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-primary text-sm font-black text-white shadow-[0_14px_28px_rgba(209,31,58,0.25)]">
-            AT
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-              Audit Trainer
-            </p>
-            <h1 className="text-2xl font-semibold text-foreground">
-              Invitation access
-            </h1>
+      <section className="w-full max-w-xl overflow-hidden rounded-[1.75rem] border border-border bg-surface shadow-[0_24px_70px_rgba(23,26,31,0.14)]">
+        <div className="mobile-graphite-panel rounded-none border-0 p-6 shadow-none sm:p-7">
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-primary text-sm font-black text-white shadow-[0_14px_28px_rgba(209,31,58,0.25)]">
+              AT
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary-soft">
+                Audit Trainer
+              </p>
+              <h1 className="text-2xl font-semibold text-white">
+                Invitation access
+              </h1>
+            </div>
           </div>
         </div>
 
-        {children}
+        <div className="p-6 sm:p-8">{children}</div>
       </section>
     </main>
   )

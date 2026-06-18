@@ -399,13 +399,13 @@ export function DashboardShell({
         />
 
         <section className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 pb-28 pt-5 sm:px-6 lg:gap-6 lg:px-8 lg:pb-8 lg:pt-6">
-          <section className="app-card overflow-hidden rounded-[1.5rem]">
+          <section className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-info text-white shadow-[0_18px_45px_rgba(23,26,31,0.14)] lg:border-border lg:bg-surface lg:text-foreground lg:shadow-[0_14px_38px_rgba(23,26,31,0.07)]">
             <div className="grid gap-0 lg:grid-cols-[1fr_19rem]">
               <div className="p-4 sm:p-7">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary sm:text-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-soft sm:text-sm lg:text-primary">
                   Command center
                 </p>
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:mt-3 sm:text-4xl">
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:mt-3 sm:text-4xl lg:text-foreground">
                   <span className="lg:hidden">Business performance</span>
                   <span className="hidden lg:inline">
                     {profile.role === 'admin'
@@ -417,7 +417,7 @@ export function DashboardShell({
                           : "Today's store execution view."}
                   </span>
                 </h1>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-muted sm:mt-3 sm:text-base sm:leading-7">
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300 sm:mt-3 sm:text-base sm:leading-7 lg:text-muted">
                   <span className="lg:hidden">
                     Track scores, action plans, and stores needing attention.
                   </span>
@@ -426,11 +426,11 @@ export function DashboardShell({
                     attention from one role-scoped command center.
                   </span>
                 </p>
-                <div className="mt-4 rounded-2xl border border-border bg-surface-soft px-4 py-3 lg:hidden">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 lg:hidden">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
                     Scope
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
+                  <p className="mt-1 text-sm font-semibold text-white">
                     {context.value}
                   </p>
                 </div>

@@ -14,8 +14,8 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="app-shell flex min-h-screen items-start justify-center px-4 pb-8 pt-6 sm:px-6 lg:items-center lg:px-8 lg:py-16">
-      <section className="grid w-full max-w-6xl overflow-hidden rounded-[1.75rem] border border-border bg-surface shadow-[0_24px_60px_rgba(23,26,31,0.12)] lg:grid-cols-[1.05fr_0.95fr] lg:shadow-[0_30px_80px_rgba(23,26,31,0.16)]">
+    <main className="app-shell flex min-h-screen items-start justify-center px-4 pb-8 pt-5 sm:px-6 lg:items-center lg:px-8 lg:py-16">
+      <section className="grid w-full max-w-6xl overflow-hidden rounded-[1.75rem] border border-white/10 bg-info text-white shadow-[0_24px_60px_rgba(23,26,31,0.16)] lg:grid-cols-[1.05fr_0.95fr] lg:border-border lg:bg-surface lg:text-foreground lg:shadow-[0_30px_80px_rgba(23,26,31,0.16)]">
         <div className="relative hidden min-h-[620px] flex-col justify-between overflow-hidden bg-[#171A1F] p-10 text-white lg:flex">
           <div className="absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_30%_20%,rgba(209,31,58,0.42),transparent_34rem)]" />
           <div className="relative">
@@ -48,7 +48,7 @@ export default async function LoginPage() {
           </div>
         </div>
 
-        <div className="flex min-h-[auto] flex-col justify-center p-5 sm:p-10 lg:min-h-[620px] lg:p-12">
+        <div className="flex min-h-[auto] flex-col justify-center p-5 sm:p-10 lg:min-h-[620px] lg:bg-surface lg:p-12">
           <div className="mb-7 lg:hidden">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -56,28 +56,28 @@ export default async function LoginPage() {
                   AT
                 </div>
                 <div>
-                  <p className="text-lg font-semibold text-foreground">
+                  <p className="text-lg font-semibold text-white">
                     Audit Trainer
                   </p>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
                     Mobile audit app
                   </p>
                 </div>
               </div>
-              <div className="rounded-full border border-primary/20 bg-primary-soft px-3 py-1 text-xs font-semibold uppercase text-primary">
+              <div className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase text-primary-soft">
                 Private
               </div>
             </div>
-            <h1 className="mt-8 text-4xl font-semibold leading-tight tracking-tight text-foreground">
+            <h1 className="mt-8 text-4xl font-semibold leading-tight tracking-tight text-white">
               Operational audits, made simple.
             </h1>
-            <p className="mt-3 text-base leading-7 text-muted">
+            <p className="mt-3 text-base leading-7 text-slate-300">
               Guided store checks, follow-up actions, and performance insight in
               one mobile-first workspace.
             </p>
           </div>
 
-          <div className="max-w-lg">
+          <div className="max-w-lg rounded-[1.5rem] border border-white/10 bg-white p-5 text-foreground shadow-[0_18px_45px_rgba(23,26,31,0.14)] sm:p-6 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
             <div className="hidden rounded-full border border-primary/20 bg-primary-soft px-3 py-1 text-xs font-semibold uppercase text-primary lg:inline-flex">
               Internal access only
             </div>
@@ -94,7 +94,7 @@ export default async function LoginPage() {
               {['Guided audits', 'Action plans', 'Mobile ready'].map((item) => (
                 <div
                   key={item}
-                  className="rounded-2xl border border-border bg-surface-soft px-3 py-3 text-center text-xs font-semibold text-muted-strong"
+                  className="rounded-2xl border border-border bg-surface-soft px-3 py-3 text-center text-xs font-semibold text-muted-strong shadow-sm"
                 >
                   {item}
                 </div>
