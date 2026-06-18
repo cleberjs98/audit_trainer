@@ -92,6 +92,7 @@ export function ActionPlanDetail({
   )
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null)
   const [isUpdatingPlan, setIsUpdatingPlan] = useState(false)
+  const [showCreateItemForm, setShowCreateItemForm] = useState(false)
   const [planStatus, setPlanStatus] = useState<ActionPlanStatus>(
     actionPlan.status
   )
@@ -320,20 +321,39 @@ export function ActionPlanDetail({
         ) : null}
 
         {canManage ? (
-          <section className="app-card rounded-2xl p-5">
-            <h2 className="text-xl font-semibold text-foreground">
-              <Plus aria-hidden="true" className="mr-2 inline size-5 text-primary" />
-              Add action item
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Add one focused, measurable follow-up action at a time.
-            </p>
-            <div className="mt-4">
+          <section className="app-card rounded-2xl p-4 sm:p-5">
+            {showCreateItemForm ? (
               <ActionPlanItemForm
                 actionPlanId={actionPlan.id}
                 disabled={!canManage}
+                onCancel={() => setShowCreateItemForm(false)}
+                onSuccess={() => setShowCreateItemForm(false)}
               />
-            </div>
+            ) : (
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 gap-3">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+                    <Plus aria-hidden="true" className="size-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-semibold text-foreground">
+                      Add action item
+                    </h2>
+                    <p className="mt-1 text-sm leading-6 text-muted">
+                      Add one focused, measurable follow-up action at a time.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateItemForm(true)}
+                  className="app-primary-action inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20 sm:w-auto"
+                >
+                  <Plus aria-hidden="true" className="size-4" />
+                  Add action item
+                </button>
+              </div>
+            )}
           </section>
         ) : null}
 

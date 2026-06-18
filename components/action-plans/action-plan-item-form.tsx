@@ -21,6 +21,7 @@ type ActionPlanItemFormProps = {
   item?: ActionPlanDetailItem
   disabled: boolean
   onCancel?: () => void
+  onSuccess?: () => void
 }
 
 function stateTone(status: ActionPlanActionState['status']) {
@@ -51,6 +52,7 @@ export function ActionPlanItemForm({
   item,
   disabled,
   onCancel,
+  onSuccess,
 }: ActionPlanItemFormProps) {
   const router = useRouter()
   const [payload, setPayload] = useState<ActionPlanItemPayload>(() =>
@@ -87,6 +89,7 @@ export function ActionPlanItemForm({
         if (!item) {
           setPayload(defaultPayload())
         }
+        onSuccess?.()
         router.refresh()
       }
     } finally {
