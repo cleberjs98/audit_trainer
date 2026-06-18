@@ -7,6 +7,15 @@ import {
 } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  ClipboardCheck,
+  Gauge,
+  Star,
+  Target,
+} from 'lucide-react'
 
 import { createActionPlanForAuditAction } from '@/app/action-plans/actions'
 import {
@@ -1051,22 +1060,27 @@ export function AuditChecklist({
 
         <section className="sticky top-0 z-30 rounded-[1.5rem] border border-border bg-surface/95 p-4 shadow-[0_18px_45px_rgba(23,26,31,0.10)] backdrop-blur">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                {wizard.mode === 'review'
-                  ? 'Review'
-                  : currentQuestion
-                    ? `Question ${boundedStepIndex + 1} of ${questions.length}`
-                    : 'Checklist'}
-              </p>
-              <p className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">
-                {audit.maxScore > 0
-                  ? persistedScoreLabel(audit)
-                  : scoreLabel(preview)}
-              </p>
-              <p className="mt-1 text-xs font-medium text-muted">
-                {answeredTotal}/{questions.length} answered
-              </p>
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary">
+                <ClipboardCheck aria-hidden="true" className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                  {wizard.mode === 'review'
+                    ? 'Review'
+                    : currentQuestion
+                      ? `Question ${boundedStepIndex + 1} of ${questions.length}`
+                      : 'Checklist'}
+                </p>
+                <p className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">
+                  {audit.maxScore > 0
+                    ? persistedScoreLabel(audit)
+                    : scoreLabel(preview)}
+                </p>
+                <p className="mt-1 text-xs font-medium text-muted">
+                  {answeredTotal}/{questions.length} answered
+                </p>
+              </div>
             </div>
             <div className="rounded-2xl border border-primary/20 bg-primary-soft px-4 py-3 text-lg font-bold text-primary">
               {progressValue}%
@@ -1187,11 +1201,17 @@ export function AuditChecklist({
               <article className="rounded-[1.35rem] border border-border bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-primary/20 bg-primary-soft px-2 py-1 text-xs font-semibold text-primary">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-soft px-2 py-1 text-xs font-semibold text-primary">
+                      {currentQuestion.scoringGroup === 'bonus' ? (
+                        <Star aria-hidden="true" className="size-3.5" />
+                      ) : (
+                        <Target aria-hidden="true" className="size-3.5" />
+                      )}
                       {sectionLabel(currentQuestion)}
                     </span>
                     {currentQuestion.isRequired ? (
-                      <span className="rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
+                        <AlertCircle aria-hidden="true" className="size-3.5" />
                         Required
                       </span>
                     ) : (
@@ -1199,7 +1219,8 @@ export function AuditChecklist({
                         Optional
                       </span>
                     )}
-                    <span className="rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
+                      <Gauge aria-hidden="true" className="size-3.5" />
                       Max {currentQuestion.maxScore}
                     </span>
                   </div>
@@ -1259,8 +1280,9 @@ export function AuditChecklist({
                       type="button"
                       disabled={boundedStepIndex === 0}
                       onClick={handleBack}
-                      className="min-h-12 rounded-xl border border-border bg-white px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-4 focus:ring-primary/15 disabled:cursor-not-allowed disabled:text-muted"
+                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-4 focus:ring-primary/15 disabled:cursor-not-allowed disabled:text-muted"
                     >
+                      <ArrowLeft aria-hidden="true" className="size-4" />
                       Back
                     </button>
 
@@ -1273,13 +1295,16 @@ export function AuditChecklist({
                         type="button"
                         disabled={isSaving}
                         onClick={handleSaveAndContinue}
-                        className="app-primary-action min-h-12 rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted"
+                        className="app-primary-action inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted"
                       >
-                        {isSaving
-                          ? 'Saving...'
-                          : boundedStepIndex === questions.length - 1
-                            ? 'Save & Review'
-                            : 'Save & Continue'}
+                        <span>
+                          {isSaving
+                            ? 'Saving...'
+                            : boundedStepIndex === questions.length - 1
+                              ? 'Save & Review'
+                              : 'Save & Continue'}
+                        </span>
+                        <ArrowRight aria-hidden="true" className="size-4" />
                       </button>
                     )}
                   </div>

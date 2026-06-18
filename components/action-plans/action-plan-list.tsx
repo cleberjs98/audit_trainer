@@ -1,4 +1,12 @@
 import Link from 'next/link'
+import {
+  ArrowRight,
+  Bell,
+  Calendar,
+  CircleCheck,
+  Clock,
+  ListChecks,
+} from 'lucide-react'
 
 import {
   ActionPlanStatusBadge,
@@ -136,22 +144,51 @@ export function ActionPlanList({
 
         <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 md:pb-0">
           {[
-            { label: 'Open', value: openCount, tone: 'text-primary' },
-            { label: 'In Progress', value: inProgressCount, tone: 'text-warning' },
-            { label: 'Completed', value: completedCount, tone: 'text-success' },
-          ].map((metric) => (
+            {
+              label: 'Open',
+              value: openCount,
+              tone: 'text-primary',
+              badge: 'border-primary/20 bg-primary-soft text-primary',
+              icon: Bell,
+            },
+            {
+              label: 'In Progress',
+              value: inProgressCount,
+              tone: 'text-warning',
+              badge: 'border-warning/20 bg-warning-soft text-warning',
+              icon: Clock,
+            },
+            {
+              label: 'Completed',
+              value: completedCount,
+              tone: 'text-success',
+              badge: 'border-success/20 bg-success-soft text-success',
+              icon: CircleCheck,
+            },
+          ].map((metric) => {
+            const Icon = metric.icon
+
+            return (
             <div
               key={metric.label}
               className="app-card min-w-[9.5rem] rounded-2xl p-4 md:min-w-0 md:p-5"
             >
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                {metric.label}
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  {metric.label}
+                </p>
+                <span
+                  className={`flex size-10 shrink-0 items-center justify-center rounded-2xl border ${metric.badge}`}
+                >
+                  <Icon aria-hidden="true" className="size-5" />
+                </span>
+              </div>
               <p className={`mt-3 text-3xl font-semibold ${metric.tone}`}>
                 {metric.value}
               </p>
             </div>
-          ))}
+            )
+          })}
         </section>
 
         <section className="app-card rounded-2xl p-4">
@@ -188,9 +225,10 @@ export function ActionPlanList({
             </p>
             <Link
               href="/audits"
-              className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               View Audit History
+              <ArrowRight aria-hidden="true" className="size-4" />
             </Link>
           </section>
         ) : (
@@ -202,8 +240,8 @@ export function ActionPlanList({
               >
                 <div className="grid gap-4 lg:grid-cols-[1fr_22rem_auto] lg:items-center">
                   <div className="flex items-start gap-3 sm:gap-4">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-sm font-black text-primary sm:size-12">
-                      AP
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary sm:size-12">
+                      <ListChecks aria-hidden="true" className="size-5" />
                     </div>
                     <div>
                       <div className="flex flex-wrap gap-2">
@@ -214,7 +252,11 @@ export function ActionPlanList({
                         {plan.storeName}
                       </h2>
                       <p className="text-sm font-medium text-muted">
-                        Store {plan.storeCode} - Audit {formatDate(plan.auditVisitDate)}
+                        Store {plan.storeCode} - Audit{' '}
+                        <span className="inline-flex items-center gap-1">
+                          <Calendar aria-hidden="true" className="size-3.5" />
+                          {formatDate(plan.auditVisitDate)}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -244,9 +286,10 @@ export function ActionPlanList({
 
                   <Link
                     href={`/action-plans/${plan.id}`}
-                    className="app-primary-action inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20"
+                    className="app-primary-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20"
                   >
                     Open plan
+                    <ArrowRight aria-hidden="true" className="size-4" />
                   </Link>
                 </div>
               </article>

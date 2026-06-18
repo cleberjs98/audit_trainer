@@ -1,4 +1,18 @@
 import Link from 'next/link'
+import {
+  Bell,
+  ClipboardCheck,
+  ClipboardClock,
+  ClipboardList,
+  Gauge,
+  ListChecks,
+  Store,
+  Target,
+  TrendingUp,
+  TriangleAlert,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 
 import { signOut } from '@/app/auth/actions'
 import { formatUserRole, type ProfileRow } from '@/lib/auth/profile'
@@ -19,6 +33,7 @@ type DashboardCard = {
   description: string
   action: string
   note: string
+  icon: LucideIcon
   href?: string
   disabled?: boolean
 }
@@ -131,6 +146,56 @@ function metricToneClass(tone: DashboardMetric['tone']) {
   return 'border-primary/20 bg-primary-soft text-primary'
 }
 
+function metricIconClass(tone: DashboardMetric['tone']) {
+  if (tone === 'success') {
+    return 'border-success/20 bg-success-soft text-success'
+  }
+
+  if (tone === 'warning') {
+    return 'border-warning/20 bg-warning-soft text-warning'
+  }
+
+  if (tone === 'danger') {
+    return 'border-danger/20 bg-danger-soft text-danger'
+  }
+
+  return 'border-primary/20 bg-primary-soft text-primary'
+}
+
+function metricIcon(label: string) {
+  const normalized = label.toLowerCase()
+
+  if (normalized.includes('store')) {
+    return Store
+  }
+
+  if (normalized.includes('completed') || normalized.includes('audit')) {
+    return ClipboardCheck
+  }
+
+  if (normalized.includes('score') || normalized.includes('average')) {
+    return TrendingUp
+  }
+
+  if (
+    normalized.includes('action') ||
+    normalized.includes('plan') ||
+    normalized.includes('item')
+  ) {
+    return ListChecks
+  }
+
+  if (
+    normalized.includes('overdue') ||
+    normalized.includes('critical') ||
+    normalized.includes('focus')
+  ) {
+    return Bell
+  }
+
+  return Gauge
+}
+
 function scoreBandTone(
   tone: DashboardRecentAudit['scoreBand'] | DashboardAttentionStore['tone']
 ) {
@@ -186,6 +251,7 @@ function getDashboardCards(profile: ProfileRow): DashboardCard[] {
         : 'Create a new draft training audit for an active store.',
       action: 'Start Audit',
       note: 'Available',
+      icon: ClipboardCheck,
       href: '/start-audit',
     },
     {
@@ -194,6 +260,7 @@ function getDashboardCards(profile: ProfileRow): DashboardCard[] {
         'Review completed and in-progress audits available to your role.',
       action: 'View Audit History',
       note: 'Available',
+      icon: ClipboardClock,
       href: '/audits',
     },
     {
@@ -202,6 +269,7 @@ function getDashboardCards(profile: ProfileRow): DashboardCard[] {
         'Track manual follow-up actions created from completed store audits.',
       action: 'Open Action Plans',
       note: 'Available',
+      icon: ListChecks,
       href: '/action-plans',
     },
   ]
@@ -215,6 +283,7 @@ function getDashboardCards(profile: ProfileRow): DashboardCard[] {
           : 'Create and update stores inside your assigned area.',
       action: 'Open Store Management',
       note: 'Available',
+      icon: Store,
       href: '/store-management',
     })
   }
@@ -228,6 +297,7 @@ function getDashboardCards(profile: ProfileRow): DashboardCard[] {
           : 'Create scoped invitations and manage pending team access.',
       action: 'Open Team Management',
       note: 'Available',
+      icon: Users,
       href: '/team',
     })
   }
@@ -331,24 +401,40 @@ export function DashboardShell({
         <section className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 pb-28 pt-5 sm:px-6 lg:gap-6 lg:px-8 lg:pb-8 lg:pt-6">
           <section className="app-card overflow-hidden rounded-[1.5rem]">
             <div className="grid gap-0 lg:grid-cols-[1fr_19rem]">
-              <div className="p-5 sm:p-7">
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+              <div className="p-4 sm:p-7">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary sm:text-sm">
                   Command center
                 </p>
-                <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                  {profile.role === 'admin'
-                    ? 'Business performance at a glance.'
-                    : profile.role === 'area_manager'
-                      ? 'Area performance at a glance.'
-                      : profile.role === 'store_manager'
-                        ? 'Store performance and follow-up.'
-                        : "Today's store execution view."}
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:mt-3 sm:text-4xl">
+                  <span className="lg:hidden">Business performance</span>
+                  <span className="hidden lg:inline">
+                    {profile.role === 'admin'
+                      ? 'Business performance at a glance.'
+                      : profile.role === 'area_manager'
+                        ? 'Area performance at a glance.'
+                        : profile.role === 'store_manager'
+                          ? 'Store performance and follow-up.'
+                          : "Today's store execution view."}
+                  </span>
                 </h1>
-                <p className="mt-3 max-w-3xl text-base leading-7 text-muted">
-                  Track audit scores, action plans, and stores that need
-                  attention from one role-scoped command center.
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-muted sm:mt-3 sm:text-base sm:leading-7">
+                  <span className="lg:hidden">
+                    Track scores, action plans, and stores needing attention.
+                  </span>
+                  <span className="hidden lg:inline">
+                    Track audit scores, action plans, and stores that need
+                    attention from one role-scoped command center.
+                  </span>
                 </p>
-                <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                <div className="mt-4 rounded-2xl border border-border bg-surface-soft px-4 py-3 lg:hidden">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                    Scope
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {context.value}
+                  </p>
+                </div>
+                <div className="mt-5 hidden flex-col gap-3 lg:flex lg:flex-row">
                   <Link
                     href="/start-audit"
                     className="app-primary-action inline-flex min-h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20"
@@ -363,7 +449,7 @@ export function DashboardShell({
                   </Link>
                 </div>
               </div>
-              <div className="border-t border-border bg-info p-5 text-white lg:border-l lg:border-t-0 sm:p-7">
+              <div className="hidden border-t border-border bg-info p-5 text-white sm:p-7 lg:block lg:border-l lg:border-t-0">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
                   Current scope
                 </p>
@@ -378,31 +464,45 @@ export function DashboardShell({
           </section>
 
           <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-2 md:gap-4 md:overflow-visible md:px-0 md:pb-0 xl:grid-cols-4">
-            {analytics.metrics.map((metric) => (
-              <div
-                key={metric.label}
-                className="app-card min-w-[10.5rem] rounded-2xl p-4 md:min-w-0 md:p-5"
-              >
+            {analytics.metrics.map((metric) => {
+              const Icon = metricIcon(metric.label)
+
+              return (
                 <div
-                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${metricToneClass(
-                    metric.tone
-                  )}`}
+                  key={metric.label}
+                  className="app-card min-w-[10.5rem] rounded-2xl p-4 md:min-w-0 md:p-5"
                 >
-                  {metric.label}
-                </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div
+                      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${metricToneClass(
+                        metric.tone
+                      )}`}
+                    >
+                      {metric.label}
+                    </div>
+                    <span
+                      className={`flex size-10 shrink-0 items-center justify-center rounded-2xl border ${metricIconClass(
+                        metric.tone
+                      )}`}
+                    >
+                      <Icon aria-hidden="true" className="size-5" />
+                    </span>
+                  </div>
                 <p className="mt-4 text-2xl font-semibold text-foreground">
                   {metric.value}
                 </p>
                 <p className="mt-2 text-sm text-muted">{metric.helper}</p>
               </div>
-            ))}
+              )
+            })}
           </section>
 
           <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-            <article className="app-card rounded-2xl p-5 sm:p-6">
+            <article className="order-2 app-card rounded-2xl p-5 sm:p-6 xl:order-1">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-primary">
+                  <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                    <ClipboardList aria-hidden="true" className="size-4" />
                     Recent audits
                   </p>
                   <h2 className="text-2xl font-semibold text-foreground">
@@ -457,8 +557,9 @@ export function DashboardShell({
               )}
             </article>
 
-            <article className="app-card rounded-2xl p-5 sm:p-6">
-              <p className="text-sm font-semibold text-primary">
+            <article className="order-1 app-card rounded-2xl p-5 sm:p-6 xl:order-2">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                <ListChecks aria-hidden="true" className="size-4" />
                 Action plans
               </p>
               <h2 className="text-2xl font-semibold text-foreground">
@@ -527,7 +628,8 @@ export function DashboardShell({
 
           <section className="grid gap-4 xl:grid-cols-2">
             <article className="app-card rounded-2xl p-5 sm:p-6">
-              <p className="text-sm font-semibold text-primary">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                <TriangleAlert aria-hidden="true" className="size-4" />
                 Needs attention
               </p>
               <h2 className="text-2xl font-semibold text-foreground">
@@ -569,7 +671,8 @@ export function DashboardShell({
             </article>
 
             <article className="app-card rounded-2xl p-5 sm:p-6">
-              <p className="text-sm font-semibold text-primary">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                <Target aria-hidden="true" className="size-4" />
                 Score focus
               </p>
               <h2 className="text-2xl font-semibold text-foreground">
@@ -618,10 +721,11 @@ export function DashboardShell({
             </article>
           </section>
 
-          <section>
+          <section className="hidden lg:block">
             <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-primary">
+                <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                  <ClipboardCheck aria-hidden="true" className="size-4" />
                   Quick actions
                 </p>
                 <h2 className="text-2xl font-semibold text-foreground">
@@ -631,46 +735,50 @@ export function DashboardShell({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-            {cards.map((card, index) => (
-              <article
-                key={card.title}
-                className="app-card flex flex-col justify-between rounded-2xl p-4 transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_22px_50px_rgba(23,26,31,0.12)] sm:min-h-64 sm:p-5"
-              >
-                <div>
-                  <div className="mb-4 flex items-center justify-between sm:mb-5">
-                    <div className="flex size-11 items-center justify-center rounded-2xl bg-primary-soft text-base font-black text-primary sm:size-12">
-                      {String(index + 1).padStart(2, '0')}
-                    </div>
-                    <div className="rounded-full border border-border bg-surface-soft px-3 py-1 text-xs font-semibold text-muted">
-                      {card.note}
-                    </div>
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground sm:text-xl">
-                    {card.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted sm:mt-3">
-                    {card.description}
-                  </p>
-                </div>
+              {cards.map((card) => {
+                const Icon = card.icon
 
-                {card.href ? (
-                  <Link
-                    href={card.href}
-                    className="app-primary-action mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20"
-                  >
-                    {card.action}
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={card.disabled ?? true}
-                    className="mt-6 min-h-11 w-full rounded-xl border border-border bg-surface-soft px-4 text-sm font-semibold text-muted"
-                  >
-                    {card.action}
-                  </button>
-                )}
-              </article>
-            ))}
+                return (
+                <article
+                  key={card.title}
+                  className="app-card flex flex-col justify-between rounded-2xl p-4 transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_22px_50px_rgba(23,26,31,0.12)] sm:min-h-64 sm:p-5"
+                >
+                  <div>
+                    <div className="mb-4 flex items-center justify-between sm:mb-5">
+                      <div className="flex size-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary sm:size-12">
+                        <Icon aria-hidden="true" className="size-5" />
+                      </div>
+                      <div className="rounded-full border border-border bg-surface-soft px-3 py-1 text-xs font-semibold text-muted">
+                        {card.note}
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground sm:text-xl">
+                      {card.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-muted sm:mt-3">
+                      {card.description}
+                    </p>
+                  </div>
+
+                  {card.href ? (
+                    <Link
+                      href={card.href}
+                      className="app-primary-action mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20"
+                    >
+                      {card.action}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={card.disabled ?? true}
+                      className="mt-6 min-h-11 w-full rounded-xl border border-border bg-surface-soft px-4 text-sm font-semibold text-muted"
+                    >
+                      {card.action}
+                    </button>
+                  )}
+                </article>
+                )
+              })}
             </div>
           </section>
         </section>

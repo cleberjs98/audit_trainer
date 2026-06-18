@@ -1,4 +1,19 @@
 import Link from 'next/link'
+import {
+  ArrowRight,
+  Calendar,
+  CircleCheck,
+  ClipboardList,
+  Clock,
+  FileText,
+  Lock,
+  LockOpen,
+  Search,
+  SlidersHorizontal,
+  Store,
+  User,
+  type LucideIcon,
+} from 'lucide-react'
 
 import type { PretSectionScores } from '@/components/checklist/types'
 import {
@@ -141,6 +156,22 @@ function statusTone(status: AuditStatus) {
   }
 
   return 'border-primary/20 bg-primary-soft text-primary'
+}
+
+function statusIcon(status: AuditStatus): LucideIcon {
+  if (status === 'completed') {
+    return CircleCheck
+  }
+
+  if (status === 'in_progress') {
+    return Clock
+  }
+
+  if (status === 'draft') {
+    return FileText
+  }
+
+  return ClipboardList
 }
 
 function scoreBandTone(scoreBand: AuditScoreBand | null) {
@@ -287,8 +318,9 @@ export function AuditHistoryList({
             <form action="/audits" className="flex flex-col gap-2">
               <label
                 htmlFor="audit-search"
-                className="text-sm font-semibold text-foreground"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-foreground"
               >
+                <Search aria-hidden="true" className="size-4 text-primary" />
                 Search store
               </label>
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -330,7 +362,13 @@ export function AuditHistoryList({
 
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
             <div>
-              <p className="text-sm font-semibold text-foreground">Status</p>
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+                <SlidersHorizontal
+                  aria-hidden="true"
+                  className="size-4 text-primary"
+                />
+                Status
+              </p>
               <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                 {STATUS_OPTIONS.map((option) => {
                   const isActive = option.value === activeStatus
@@ -413,19 +451,34 @@ export function AuditHistoryList({
               >
                 <div className="grid gap-4 xl:grid-cols-[1fr_18rem_auto] xl:items-center">
                   <div className="flex items-start gap-3 sm:gap-4">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-sm font-black text-primary sm:size-12">
-                      {audit.storeName.slice(0, 2).toUpperCase()}
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary sm:size-12">
+                      <Store aria-hidden="true" className="size-5" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap gap-2">
-                        <span
-                          className={`rounded-full border px-2 py-1 text-xs font-semibold ${statusTone(
-                            audit.status
-                          )}`}
-                        >
-                          {formatStatus(audit.status)}
-                        </span>
+                        {(() => {
+                          const StatusIcon = statusIcon(audit.status)
+
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${statusTone(
+                                audit.status
+                              )}`}
+                            >
+                              <StatusIcon
+                                aria-hidden="true"
+                                className="size-3.5"
+                              />
+                              {formatStatus(audit.status)}
+                            </span>
+                          )
+                        })()}
                         <span className="rounded-full border border-border bg-surface-soft px-2 py-1 text-xs font-semibold text-muted">
+                          {audit.isLocked ? (
+                            <Lock aria-hidden="true" className="mr-1 inline size-3.5" />
+                          ) : (
+                            <LockOpen aria-hidden="true" className="mr-1 inline size-3.5" />
+                          )}
                           {audit.isLocked ? 'Locked' : 'Unlocked'}
                         </span>
                         {!isPretAudit(audit) ? (
@@ -440,10 +493,23 @@ export function AuditHistoryList({
                       <p className="text-sm font-medium text-muted">
                         Store {audit.storeCode} - {audit.areaName}
                       </p>
-                      <p className="mt-1 text-sm leading-6 text-muted">
-                        Visit {formatDate(audit.visitDate)} at{' '}
-                        {formatTime(audit.visitTime)} - {audit.creatorName}
-                      </p>
+                      <div className="mt-1 flex flex-col gap-1 text-sm leading-6 text-muted sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Calendar
+                            aria-hidden="true"
+                            className="size-4 text-muted-strong"
+                          />
+                          Visit {formatDate(audit.visitDate)} at{' '}
+                          {formatTime(audit.visitTime)}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <User
+                            aria-hidden="true"
+                            className="size-4 text-muted-strong"
+                          />
+                          {audit.creatorName}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -468,9 +534,10 @@ export function AuditHistoryList({
 
                   <Link
                     href={`/audits/${audit.id}`}
-                    className="app-primary-action inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20"
+                    className="app-primary-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20"
                   >
                     Open audit
+                    <ArrowRight aria-hidden="true" className="size-4" />
                   </Link>
                 </div>
               </article>

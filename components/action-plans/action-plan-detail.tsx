@@ -3,6 +3,15 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import {
+  Calendar,
+  CircleCheck,
+  Clock,
+  Gauge,
+  ListChecks,
+  Plus,
+  Store,
+} from 'lucide-react'
 
 import {
   updateActionPlanItemStatusAction,
@@ -169,21 +178,26 @@ export function ActionPlanDetail({
         <section className="app-card overflow-hidden rounded-[1.5rem]">
           <div className="grid gap-0 lg:grid-cols-[1fr_20rem]">
             <div className="p-5 sm:p-7">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="flex flex-wrap gap-2">
-                <ActionPlanStatusBadge status={actionPlan.status} />
-                <ManualPlanBadge generatedByAi={actionPlan.generatedByAi} />
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary">
+                    <ListChecks aria-hidden="true" className="size-6" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap gap-2">
+                      <ActionPlanStatusBadge status={actionPlan.status} />
+                      <ManualPlanBadge generatedByAi={actionPlan.generatedByAi} />
+                    </div>
+                    <h1 className="mt-3 text-3xl font-semibold text-foreground">
+                      {actionPlan.focusArea ?? 'Manual Action Plan'}
+                    </h1>
+                    <p className="mt-3 max-w-3xl text-base leading-7 text-muted">
+                      {actionPlan.summary ??
+                        'Track manual follow-up actions for this completed audit.'}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <h1 className="mt-3 text-3xl font-semibold text-foreground">
-                {actionPlan.focusArea ?? 'Manual Action Plan'}
-              </h1>
-              <p className="mt-3 max-w-3xl text-base leading-7 text-muted">
-                {actionPlan.summary ??
-                  'Track manual follow-up actions for this completed audit.'}
-              </p>
-            </div>
-          </div>
             </div>
             <div className="border-t border-border bg-info p-5 text-white lg:border-l lg:border-t-0 sm:p-7">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
@@ -219,14 +233,20 @@ export function ActionPlanDetail({
 
         <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 lg:pb-0">
           <div className="min-w-[12rem] rounded-2xl border border-border bg-surface p-4 shadow-sm lg:min-w-0">
-            <p className="text-xs font-semibold text-muted">Store</p>
+            <p className="inline-flex items-center gap-2 text-xs font-semibold text-muted">
+              <Store aria-hidden="true" className="size-4 text-primary" />
+              Store
+            </p>
             <p className="mt-1 text-base font-semibold text-foreground">
               {actionPlan.storeName}
             </p>
             <p className="mt-1 text-xs text-muted">Code {actionPlan.storeCode}</p>
           </div>
           <div className="min-w-[12rem] rounded-2xl border border-border bg-surface p-4 shadow-sm lg:min-w-0">
-            <p className="text-xs font-semibold text-muted">Audit visit</p>
+            <p className="inline-flex items-center gap-2 text-xs font-semibold text-muted">
+              <Calendar aria-hidden="true" className="size-4 text-primary" />
+              Audit visit
+            </p>
             <p className="mt-1 text-base font-semibold text-foreground">
               {formatDate(actionPlan.auditVisitDate)}
             </p>
@@ -235,7 +255,10 @@ export function ActionPlanDetail({
             </p>
           </div>
           <div className="min-w-[12rem] rounded-2xl border border-border bg-surface p-4 shadow-sm lg:min-w-0">
-            <p className="text-xs font-semibold text-muted">Audit score</p>
+            <p className="inline-flex items-center gap-2 text-xs font-semibold text-muted">
+              <Gauge aria-hidden="true" className="size-4 text-primary" />
+              Audit score
+            </p>
             <p className="mt-1 text-base font-semibold text-foreground">
               {scoreLabel(actionPlan)}
             </p>
@@ -244,7 +267,10 @@ export function ActionPlanDetail({
             </p>
           </div>
           <div className="min-w-[12rem] rounded-2xl border border-border bg-surface p-4 shadow-sm lg:min-w-0">
-            <p className="text-xs font-semibold text-muted">Created</p>
+            <p className="inline-flex items-center gap-2 text-xs font-semibold text-muted">
+              <Clock aria-hidden="true" className="size-4 text-primary" />
+              Created
+            </p>
             <p className="mt-1 text-base font-semibold text-foreground">
               {formatDate(actionPlan.createdAt)}
             </p>
@@ -296,6 +322,7 @@ export function ActionPlanDetail({
         {canManage ? (
           <section className="app-card rounded-2xl p-5">
             <h2 className="text-xl font-semibold text-foreground">
+              <Plus aria-hidden="true" className="mr-2 inline size-5 text-primary" />
               Add action item
             </h2>
             <p className="mt-2 text-sm leading-6 text-muted">
@@ -361,6 +388,7 @@ export function ActionPlanDetail({
                       </div>
                       <div className="rounded-xl border border-border bg-surface-soft p-3">
                         <dt className="text-xs font-semibold text-muted">
+                          <Calendar aria-hidden="true" className="mr-1 inline size-3.5 text-primary" />
                           Due date
                         </dt>
                         <dd className="mt-1 text-sm font-semibold text-foreground">
@@ -369,6 +397,7 @@ export function ActionPlanDetail({
                       </div>
                       <div className="rounded-xl border border-border bg-surface-soft p-3">
                         <dt className="text-xs font-semibold text-muted">
+                          <CircleCheck aria-hidden="true" className="mr-1 inline size-3.5 text-success" />
                           Completed
                         </dt>
                         <dd className="mt-1 text-sm font-semibold text-foreground">

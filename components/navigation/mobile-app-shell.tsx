@@ -1,4 +1,12 @@
 import Link from 'next/link'
+import {
+  ClipboardList,
+  Home,
+  ListChecks,
+  Store,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 
 import type { UserRole } from '@/types/user'
 
@@ -18,6 +26,13 @@ type MobileBottomNavProps = {
   active: MobileNavActive
 }
 
+type MobileNavItem = {
+  key: MobileNavActive
+  label: string
+  href: string
+  icon: LucideIcon
+}
+
 function initials(value: string | undefined) {
   if (!value) {
     return 'AT'
@@ -33,19 +48,38 @@ function initials(value: string | undefined) {
 }
 
 function mobileNavItems(role: UserRole, active: MobileNavActive) {
-  const items = [
-    { key: 'dashboard', label: 'Home', href: '/dashboard' },
-    { key: 'audits', label: 'Audits', href: '/audits' },
-    { key: 'action-plans', label: 'Plans', href: '/action-plans' },
-  ] as const
+  const items: MobileNavItem[] = [
+    { key: 'dashboard', label: 'Home', href: '/dashboard', icon: Home },
+    { key: 'audits', label: 'Audits', href: '/audits', icon: ClipboardList },
+    {
+      key: 'action-plans',
+      label: 'Plans',
+      href: '/action-plans',
+      icon: ListChecks,
+    },
+  ]
 
   const roleItems =
     role === 'admin' || role === 'area_manager'
-      ? [{ key: 'stores', label: 'Stores', href: '/store-management' } as const]
+      ? [
+          {
+            key: 'stores',
+            label: 'Stores',
+            href: '/store-management',
+            icon: Store,
+          } satisfies MobileNavItem,
+        ]
       : []
   const moreItems =
     role === 'admin' || role === 'area_manager' || role === 'store_manager'
-      ? [{ key: 'more', label: 'Team', href: '/team' } as const]
+      ? [
+          {
+            key: 'more',
+            label: 'Team',
+            href: '/team',
+            icon: Users,
+          } satisfies MobileNavItem,
+        ]
       : []
 
   return [...items, ...roleItems, ...moreItems].map((item) => ({
@@ -117,26 +151,31 @@ export function MobileBottomNav({ role, active }: MobileBottomNavProps) {
       className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-14px_34px_rgba(23,26,31,0.14)] backdrop-blur lg:hidden"
     >
       <div className="mx-auto flex max-w-md items-center justify-around gap-1">
-        {mobileNavItems(role, active).map((item) => (
-          <Link
-            key={item.key}
-            href={item.href}
-            className={`flex min-h-12 flex-1 flex-col items-center justify-center rounded-2xl px-2 text-[0.7rem] font-semibold transition ${
-              item.active
-                ? 'bg-primary text-white shadow-[0_10px_24px_rgba(209,31,58,0.24)]'
-                : 'text-muted hover:bg-surface-soft hover:text-foreground'
-            }`}
-            aria-current={item.active ? 'page' : undefined}
-          >
-            <span
-              aria-hidden="true"
-              className={`mb-1 size-1.5 rounded-full ${
-                item.active ? 'bg-white' : 'bg-border'
+        {mobileNavItems(role, active).map((item) => {
+          const Icon = item.icon
+
+          return (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={`flex min-h-12 flex-1 flex-col items-center justify-center rounded-2xl px-2 text-[0.7rem] font-semibold transition ${
+                item.active
+                  ? 'bg-primary text-white shadow-[0_10px_24px_rgba(209,31,58,0.24)]'
+                  : 'text-muted hover:bg-surface-soft hover:text-foreground'
               }`}
-            />
-            {item.label}
-          </Link>
-        ))}
+              aria-current={item.active ? 'page' : undefined}
+            >
+              <Icon
+                aria-hidden="true"
+                className={`mb-1 size-5 ${
+                  item.active ? 'text-white' : 'text-muted-strong'
+                }`}
+                strokeWidth={2.2}
+              />
+              {item.label}
+            </Link>
+          )
+        })}
       </div>
     </nav>
   )

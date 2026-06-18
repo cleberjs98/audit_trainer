@@ -2,6 +2,13 @@
 
 import { useMemo, useState } from 'react'
 import { useActionState } from 'react'
+import {
+  Clock,
+  Mail,
+  UserPlus,
+  Users,
+  XCircle,
+} from 'lucide-react'
 
 import {
   createInvitationAction,
@@ -88,8 +95,9 @@ function RevokeInvitationForm({ invitationId }: { invitationId: string }) {
       <button
         type="submit"
         disabled={isPending}
-        className="inline-flex min-h-10 items-center justify-center rounded-xl border border-danger/20 bg-danger-soft px-4 text-sm font-semibold text-danger transition hover:border-danger/40 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-danger/20 bg-danger-soft px-4 text-sm font-semibold text-danger transition hover:border-danger/40 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
       >
+        <XCircle aria-hidden="true" className="size-4" />
         {isPending ? 'Cancelling...' : 'Cancel invite'}
       </button>
       {state.message ? (
@@ -140,17 +148,22 @@ export function TeamManagementClient({
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
       <section className="app-card rounded-[1.5rem] p-5 sm:p-6">
-        <div>
-          <p className="text-sm font-semibold text-primary">
-            Invite user
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold text-foreground">
-            Create a pending invitation
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            The invited person must sign in with the same email before
-            accepting the invitation.
-          </p>
+        <div className="flex items-start gap-4">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary">
+            <UserPlus aria-hidden="true" className="size-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-primary">
+              Invite user
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold text-foreground">
+              Create a pending invitation
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              The invited person must sign in with the same email before
+              accepting the invitation.
+            </p>
+          </div>
         </div>
 
         <form action={formAction} className="mt-6 grid gap-5">
@@ -281,8 +294,9 @@ export function TeamManagementClient({
           <button
             type="submit"
             disabled={isPending}
-            className="app-primary-action inline-flex min-h-12 items-center justify-center rounded-xl px-5 text-sm font-semibold text-white transition focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+            className="app-primary-action inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-white transition focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
           >
+            <UserPlus aria-hidden="true" className="size-4" />
             {isPending ? 'Creating invitation...' : 'Create invitation'}
           </button>
         </form>
@@ -290,13 +304,18 @@ export function TeamManagementClient({
 
       <section className="app-card rounded-[1.5rem] p-5 sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+          <div className="flex items-start gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary">
+              <Users aria-hidden="true" className="size-6" />
+            </div>
+            <div>
             <p className="text-sm font-semibold text-primary">
               Pending invitations
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-foreground">
               Awaiting acceptance
             </h2>
+            </div>
           </div>
           <p className="text-sm font-semibold text-muted">
             {invitations.length} pending
@@ -323,10 +342,12 @@ export function TeamManagementClient({
                 <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-warning/25 bg-warning-soft px-3 py-1 text-xs font-semibold text-warning">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-warning/25 bg-warning-soft px-3 py-1 text-xs font-semibold text-warning">
+                        <Clock aria-hidden="true" className="size-3.5" />
                         {formatInvitationStatus(invitation.status)}
                       </span>
-                      <span className="rounded-full border border-primary/20 bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
+                        <Mail aria-hidden="true" className="size-3.5" />
                         {formatUserRole(invitation.role)}
                       </span>
                     </div>

@@ -2,6 +2,13 @@
 
 import Link from 'next/link'
 import { useActionState } from 'react'
+import {
+  CircleCheck,
+  MapPin,
+  Store,
+  UserPlus,
+  Users,
+} from 'lucide-react'
 
 import {
   createStoreAction,
@@ -254,15 +261,20 @@ function CreateStoreForm({
 
   return (
     <form action={formAction} className="app-card rounded-[1.5rem] p-5">
-      <div>
-        <p className="text-sm font-semibold text-primary">Create store</p>
-        <h2 className="mt-2 text-2xl font-semibold text-foreground">
-          Add an operational store
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-muted">
-          Use store number/code as the official identifier. Store manager
-          assignment becomes available after the store exists.
-        </p>
+      <div className="flex items-start gap-4">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary">
+          <Store aria-hidden="true" className="size-6" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-primary">Create store</p>
+          <h2 className="mt-2 text-2xl font-semibold text-foreground">
+            Add an operational store
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Use store number/code as the official identifier. Store manager
+            assignment becomes available after the store exists.
+          </p>
+        </div>
       </div>
 
       <div className="mt-5 grid gap-4">
@@ -294,7 +306,8 @@ function CreateStoreForm({
               Active store
             </label>
             <div className="rounded-lg border border-border bg-white p-3 sm:col-span-2">
-              <p className="text-sm font-semibold text-foreground">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+                <UserPlus aria-hidden="true" className="size-4 text-primary" />
                 Store Manager
               </p>
               <p className="mt-1 text-sm leading-6 text-muted">
@@ -356,8 +369,9 @@ function CreateStoreForm({
         <button
           type="submit"
           disabled={isPending || !canSubmit}
-          className="app-primary-action min-h-11 rounded-xl px-5 text-sm font-semibold text-white transition focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted"
+          className="app-primary-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-white transition focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted"
         >
+          <Store aria-hidden="true" className="size-4" />
           {isPending ? 'Saving...' : 'Create store'}
         </button>
       </div>
@@ -411,7 +425,8 @@ function StoreUpdateForm({
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-surface-soft px-4 py-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
+            <MapPin aria-hidden="true" className="size-4 text-primary" />
             Location
           </p>
           <p className="mt-1 text-sm font-semibold text-foreground">
@@ -629,25 +644,40 @@ export function StoreManagementClient({
 
         <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0">
           <div className="app-card min-w-[10rem] rounded-2xl p-4 sm:min-w-0 sm:p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Total stores
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Total stores
+              </p>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary">
+                <Store aria-hidden="true" className="size-5" />
+              </span>
+            </div>
             <p className="mt-3 text-3xl font-semibold text-foreground">
               {stores.length}
             </p>
           </div>
           <div className="app-card min-w-[10rem] rounded-2xl p-4 sm:min-w-0 sm:p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Active stores
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Active stores
+              </p>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-success/20 bg-success-soft text-success">
+                <CircleCheck aria-hidden="true" className="size-5" />
+              </span>
+            </div>
             <p className="mt-3 text-3xl font-semibold text-success">
               {activeStoreCount}
             </p>
           </div>
           <div className="app-card min-w-[10rem] rounded-2xl p-4 sm:min-w-0 sm:p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Eligible managers
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Eligible managers
+              </p>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary">
+                <Users aria-hidden="true" className="size-5" />
+              </span>
+            </div>
             <p className="mt-3 text-3xl font-semibold text-primary">
               {storeManagers.length}
             </p>
@@ -659,7 +689,10 @@ export function StoreManagementClient({
         <section>
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-primary">Stores</p>
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                <Store aria-hidden="true" className="size-4" />
+                Stores
+              </p>
               <h2 className="text-2xl font-semibold text-foreground">
                 Current stores
               </h2>
