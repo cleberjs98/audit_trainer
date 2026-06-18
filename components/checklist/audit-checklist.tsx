@@ -37,6 +37,12 @@ import {
   MobileAppHeader,
   MobileBottomNav,
 } from '@/components/navigation/mobile-app-shell'
+import {
+  commentRequirementReason,
+  commentRequirementText,
+  findMissingCommentRequirements,
+  type MissingCommentRequirement,
+} from '@/lib/audits/comment-requirements'
 import type { UserRole } from '@/types/user'
 
 type AuditChecklistProps = {
@@ -59,6 +65,7 @@ type DraftAnswer = {
   score: string
   isNa: boolean
   comment: string
+  isCriticalFlag: boolean
 }
 
 type DraftAnswerMap = Record<string, DraftAnswer>
@@ -373,6 +380,7 @@ function initialDraftMap(questions: ChecklistQuestion[]) {
           : String(question.answer.score),
       isNa: question.answer?.isNa ?? false,
       comment: question.answer?.comment ?? '',
+      isCriticalFlag: question.answer?.isCriticalFlag ?? false,
     }
 
     if (
@@ -482,8 +490,37 @@ function buildSavedAnswer(
     maxScore: state.maxScore,
     isNa: state.isNa,
     comment: state.comment,
-    isCriticalFlag: currentAnswers[state.questionId]?.isCriticalFlag ?? false,
+    isCriticalFlag: state.isCriticalFlag,
   }
+}
+
+function draftScore(draft: DraftAnswer) {
+  if (draft.score.trim() === '') {
+    return null
+  }
+
+  const score = Number(draft.score)
+
+  return Number.isFinite(score) ? score : null
+}
+
+function draftCommentRequirement(
+  question: ChecklistQuestion,
+  draft: DraftAnswer
+) {
+  return commentRequirementReason(question, {
+    score: draftScore(draft),
+    comment: draft.comment,
+    isCriticalFlag: draft.isCriticalFlag,
+  })
+}
+
+function missingCommentButtonLabel(requirement: MissingCommentRequirement) {
+  if (requirement.displayNumber) {
+    return `Q${requirement.displayNumber}`
+  }
+
+  return 'Bonus'
 }
 
 function QuestionInput({
@@ -630,6 +667,7 @@ function ReviewCompleteCard({
   answeredCoreCount,
   requiredCoreCount,
   missingRequiredCoreQuestions,
+  missingCommentRequirements,
   preview,
   onQuestionSelect,
 }: {
@@ -639,6 +677,7 @@ function ReviewCompleteCard({
   answeredCoreCount: number
   requiredCoreCount: number
   missingRequiredCoreQuestions: ChecklistQuestion[]
+  missingCommentRequirements: MissingCommentRequirement[]
   preview: ScorePreview
   onQuestionSelect: (index: number) => void
 }) {
@@ -651,14 +690,30 @@ function ReviewCompleteCard({
   const canComplete =
     !readOnly && (audit.status === 'draft' || audit.status === 'in_progress')
   const hasMissingRequired = missingRequiredCoreQuestions.length > 0
+  const visibleMissingCommentRequirements =
+    missingCommentRequirements.length > 0
+      ? missingCommentRequirements
+      : state.missingCommentRequirements ?? []
+  const hasMissingComments = visibleMissingCommentRequirements.length > 0
   const shouldShowCompletionState =
-    !isRequiredCompletionMessage(state.message) || hasMissingRequired
+    !isRequiredCompletionMessage(state.message) ||
+    hasMissingRequired ||
+    hasMissingComments
 
   async function handleCompleteAudit() {
     if (hasMissingRequired) {
       setState({
         status: 'error',
         message: 'Please complete all required questions before finishing the audit.',
+      })
+      return
+    }
+
+    if (hasMissingComments) {
+      setState({
+        status: 'error',
+        message: 'Please add the required comments before completing the audit.',
+        missingCommentRequirements: visibleMissingCommentRequirements,
       })
       return
     }
@@ -716,6 +771,14 @@ function ReviewCompleteCard({
           </div>
           <div className="rounded-xl border border-border bg-background p-3">
             <p className="text-xs font-semibold text-muted">
+              Missing comments
+            </p>
+            <p className="mt-1 text-lg font-semibold text-foreground">
+              {visibleMissingCommentRequirements.length}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-background p-3">
+            <p className="text-xs font-semibold text-muted">
               {audit.maxScore > 0 ? 'Final score' : 'Preview'}
             </p>
             <p className="mt-1 text-sm font-semibold text-foreground">
@@ -752,6 +815,40 @@ function ReviewCompleteCard({
           </div>
         ) : null}
 
+        {visibleMissingCommentRequirements.length > 0 ? (
+          <div className="rounded-xl border border-warning/20 bg-warning-soft p-3 text-warning">
+            <p className="text-sm font-semibold">
+              Add comments before completing:
+            </p>
+            <div className="mt-3 grid gap-2">
+              {visibleMissingCommentRequirements.map((requirement) => {
+                const questionIndex = questions.findIndex(
+                  (item) => item.id === requirement.questionId
+                )
+
+                return (
+                  <button
+                    key={`${requirement.questionId}-${requirement.reason}`}
+                    type="button"
+                    onClick={() => {
+                      onQuestionSelect(questionIndex)
+                    }}
+                    className="rounded-lg border border-warning/30 bg-white px-3 py-2 text-left text-sm font-semibold text-warning"
+                  >
+                    <span className="block">
+                      {missingCommentButtonLabel(requirement)} -{' '}
+                      {commentRequirementText(requirement.reason)}
+                    </span>
+                    <span className="mt-1 block text-xs font-medium leading-5">
+                      {requirement.questionText}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+
         {audit.completedAt ? (
           <div className="rounded-xl border border-border bg-background p-3">
             <p className="text-xs font-semibold text-muted">Completed</p>
@@ -764,10 +861,10 @@ function ReviewCompleteCard({
 
       {canComplete ? (
         <div className="mt-5 flex flex-col gap-4">
-          {hasMissingRequired ? (
+          {hasMissingRequired || hasMissingComments ? (
             <div className="rounded-lg border border-warning/20 bg-warning-soft px-3 py-3 text-sm font-medium leading-6 text-warning">
-              Completion is locked until every required core question is
-              answered.
+              Completion is locked until every required answer and comment is
+              complete.
             </div>
           ) : (
             <>
@@ -794,7 +891,9 @@ function ReviewCompleteCard({
 
           <button
             type="button"
-            disabled={!confirmed || hasMissingRequired || isCompleting}
+            disabled={
+              !confirmed || hasMissingRequired || hasMissingComments || isCompleting
+            }
             onClick={handleCompleteAudit}
             className="min-h-12 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-muted"
           >
@@ -860,6 +959,7 @@ export function AuditChecklist({
   const missingRequiredCoreQuestions = requiredCoreQuestions.filter(
     (question) => !hasValidRequiredCoreAnswer(question)
   )
+  const missingCommentRequirements = findMissingCommentRequirements(questions)
   const answeredCoreCount =
     requiredCoreQuestions.length - missingRequiredCoreQuestions.length
   const progressValue =
@@ -870,6 +970,10 @@ export function AuditChecklist({
     currentQuestion &&
     (drafts[currentQuestion.id] ??
       initialDraftMap([currentQuestion])[currentQuestion.id])
+  const currentCommentRequirement =
+    currentQuestion && currentDraft
+      ? draftCommentRequirement(currentQuestion, currentDraft)
+      : null
 
   function scrollQuestionIntoView() {
     window.setTimeout(() => {
@@ -935,6 +1039,10 @@ export function AuditChecklist({
       formData.set('is_na', 'on')
     }
 
+    if (draft.isCriticalFlag) {
+      formData.set('is_critical_flag', 'on')
+    }
+
     setIsSaving(true)
 
     try {
@@ -959,6 +1067,7 @@ export function AuditChecklist({
           score: result.answer!.score === null ? '' : String(result.answer!.score),
           isNa: result.answer!.isNa,
           comment: result.answer!.comment ?? '',
+          isCriticalFlag: result.answer!.isCriticalFlag,
         },
       }))
 
@@ -1136,6 +1245,7 @@ export function AuditChecklist({
               answeredCoreCount={answeredCoreCount}
               requiredCoreCount={requiredCoreQuestions.length}
               missingRequiredCoreQuestions={missingRequiredCoreQuestions}
+              missingCommentRequirements={missingCommentRequirements}
               preview={preview}
               onQuestionSelect={handleJumpToStep}
             />
@@ -1183,6 +1293,30 @@ export function AuditChecklist({
                 </div>
 
                 <div className="mt-5 flex flex-col gap-4">
+                  {currentDraft ? (
+                    <label className="flex min-h-12 items-start gap-3 rounded-lg border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground">
+                      <input
+                        type="checkbox"
+                        disabled={readOnly}
+                        checked={currentDraft.isCriticalFlag}
+                        onChange={(event) =>
+                          updateDraft(currentQuestion.id, {
+                            ...currentDraft,
+                            isCriticalFlag: event.currentTarget.checked,
+                          })
+                        }
+                        className="mt-1 size-4 accent-primary"
+                      />
+                      <span>
+                        Critical issue
+                        <span className="mt-1 block text-xs font-medium leading-5 text-muted">
+                          Mark when this answer needs urgent management
+                          attention.
+                        </span>
+                      </span>
+                    </label>
+                  ) : null}
+
                   <QuestionInput
                     question={currentQuestion}
                     draft={currentDraft}
@@ -1193,7 +1327,12 @@ export function AuditChecklist({
                   />
 
                   <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
-                    Notes
+                    {currentCommentRequirement ? 'Required comment' : 'Notes'}
+                    {currentCommentRequirement ? (
+                      <span className="rounded-lg border border-warning/20 bg-warning-soft px-3 py-2 text-xs font-semibold leading-5 text-warning">
+                        {commentRequirementText(currentCommentRequirement)}
+                      </span>
+                    ) : null}
                     <textarea
                       rows={3}
                       disabled={readOnly}
@@ -1211,7 +1350,11 @@ export function AuditChecklist({
                           comment: event.currentTarget.value,
                         })
                       }
-                      placeholder="Optional notes"
+                      placeholder={
+                        currentCommentRequirement
+                          ? 'Add the required comment before completing.'
+                          : 'Optional notes'
+                      }
                       className="rounded-xl border border-border bg-surface px-3 py-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:bg-background disabled:text-muted"
                     />
                   </label>

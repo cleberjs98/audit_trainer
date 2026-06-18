@@ -98,12 +98,21 @@ export type SaveAnswerState = {
     maxScore: number
     isNa: boolean
     comment: string | null
+    isCriticalFlag: boolean
   }
+}
+
+export type MissingCommentRequirement = {
+  questionId: string
+  displayNumber: number | null
+  questionText: string
+  reason: 'low_score' | 'critical_issue' | 'bonus_awarded'
 }
 
 export type CompleteAuditState = {
   status: 'idle' | 'success' | 'error'
   message: string
+  missingCommentRequirements?: MissingCommentRequirement[]
 }
 
 export const initialSaveAnswerState: SaveAnswerState = {

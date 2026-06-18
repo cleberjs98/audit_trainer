@@ -6,6 +6,10 @@ import type {
   CompleteAuditState,
   SaveAnswerState,
 } from '@/components/checklist/types'
+import {
+  findMissingCommentRequirements,
+  type MissingCommentRequirement,
+} from '@/lib/audits/comment-requirements'
 import { isUserRole, type ProfileRow } from '@/lib/auth/profile'
 import { createClient } from '@/lib/supabase/server'
 
@@ -48,6 +52,21 @@ type SectionRow = {
   id: string
   title: string
   is_active: boolean
+}
+
+type CompletionQuestionRow = {
+  id: string
+  question_text: string
+  max_score: number
+  scoring_group: 'core' | 'bonus'
+  display_number: number | null
+}
+
+type CompletionAnswerRow = {
+  question_id: string
+  score: number | string | null
+  comment: string | null
+  is_critical_flag: boolean
 }
 
 type SaveAnswerAccess =
@@ -254,6 +273,65 @@ function completionErrorMessage(error: { code?: string; message?: string }) {
   return 'Could not complete this audit. Review the checklist and try again.'
 }
 
+async function loadMissingCommentRequirements(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  auditId: string
+): Promise<{
+  ok: true
+  missing: MissingCommentRequirement[]
+} | {
+  ok: false
+  message: string
+}> {
+  const [{ data: questionRows, error: questionError }, { data: answerRows, error: answerError }] =
+    await Promise.all([
+      supabase
+        .from('audit_questions')
+        .select('id, question_text, max_score, scoring_group, display_number')
+        .eq('is_active', true)
+        .eq('scoring_model_version', 'pret_ce_v1')
+        .in('scoring_group', ['core', 'bonus'])
+        .returns<CompletionQuestionRow[]>(),
+      supabase
+        .from('audit_answers')
+        .select('question_id, score, comment, is_critical_flag')
+        .eq('audit_id', auditId)
+        .returns<CompletionAnswerRow[]>(),
+    ])
+
+  if (questionError || answerError) {
+    return {
+      ok: false,
+      message: 'Could not validate required comments. Review the checklist and try again.',
+    }
+  }
+
+  const answersByQuestionId = new Map(
+    (answerRows ?? []).map((answer) => [
+      answer.question_id,
+      {
+        score: answer.score === null ? null : Number(answer.score),
+        comment: answer.comment,
+        isCriticalFlag: answer.is_critical_flag,
+      },
+    ])
+  )
+
+  const questions = (questionRows ?? []).map((question) => ({
+    id: question.id,
+    questionText: question.question_text,
+    displayNumber: question.display_number,
+    scoringGroup: question.scoring_group,
+    maxScore: Number(question.max_score),
+    answer: answersByQuestionId.get(question.id) ?? null,
+  }))
+
+  return {
+    ok: true,
+    missing: findMissingCommentRequirements(questions),
+  }
+}
+
 export async function saveAuditAnswerAction(
   _previousState: SaveAnswerState,
   formData: FormData
@@ -269,6 +347,7 @@ export async function saveAuditAnswerAction(
   const scoreInput = getText(formData, 'score')
   const comment = getText(formData, 'comment')
   const isNa = formData.get('is_na') === 'on'
+  const isCriticalFlag = formData.get('is_critical_flag') === 'on'
 
   if (!auditId || !questionId) {
     return {
@@ -357,7 +436,7 @@ export async function saveAuditAnswerAction(
       max_score: question.max_score,
       is_na: isNa,
       comment: comment || null,
-      is_critical_flag: false,
+      is_critical_flag: isCriticalFlag,
     },
     { onConflict: 'audit_id,question_id' }
   )
@@ -378,6 +457,7 @@ export async function saveAuditAnswerAction(
       maxScore: question.max_score,
       isNa,
       comment: comment || null,
+      isCriticalFlag,
     },
   }
 }
@@ -428,6 +508,26 @@ export async function completeAuditAction(
     return {
       status: 'error',
       message: 'This audit is already locked or completed.',
+    }
+  }
+
+  const commentValidation = await loadMissingCommentRequirements(
+    access.supabase,
+    audit.id
+  )
+
+  if (!commentValidation.ok) {
+    return {
+      status: 'error',
+      message: commentValidation.message,
+    }
+  }
+
+  if (commentValidation.missing.length > 0) {
+    return {
+      status: 'error',
+      message: 'Please add the required comments before completing the audit.',
+      missingCommentRequirements: commentValidation.missing,
     }
   }
 
