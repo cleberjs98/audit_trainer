@@ -281,82 +281,6 @@ export function ActionPlanDetail({
           </div>
         </section>
 
-        {canManage ? (
-          <section className="app-card rounded-2xl p-4">
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-              <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
-                Plan status
-                <select
-                  value={planStatus}
-                  onChange={(event) =>
-                    setPlanStatus(event.currentTarget.value as ActionPlanStatus)
-                  }
-                  className="min-h-11 rounded-lg border border-border bg-background px-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                >
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                </select>
-              </label>
-              <button
-                type="button"
-                disabled={isUpdatingPlan}
-                onClick={handlePlanStatusUpdate}
-                className="app-primary-action min-h-11 rounded-xl px-5 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted"
-              >
-                {isUpdatingPlan ? 'Updating...' : 'Update Status'}
-              </button>
-            </div>
-            {statusState.message ? (
-              <p
-                aria-live="polite"
-                className={`mt-3 rounded-lg border px-3 py-2 text-sm font-medium ${stateTone(
-                  statusState.status
-                )}`}
-              >
-                {statusState.message}
-              </p>
-            ) : null}
-          </section>
-        ) : null}
-
-        {canManage ? (
-          <section className="app-card rounded-2xl p-4 sm:p-5">
-            {showCreateItemForm ? (
-              <ActionPlanItemForm
-                actionPlanId={actionPlan.id}
-                disabled={!canManage}
-                onCancel={() => setShowCreateItemForm(false)}
-                onSuccess={() => setShowCreateItemForm(false)}
-              />
-            ) : (
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 gap-3">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-                    <Plus aria-hidden="true" className="size-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <h2 className="text-lg font-semibold text-foreground">
-                      Add action item
-                    </h2>
-                    <p className="mt-1 text-sm leading-6 text-muted">
-                      Add one focused, measurable follow-up action at a time.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateItemForm(true)}
-                  className="app-primary-action inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20 sm:w-auto"
-                >
-                  <Plus aria-hidden="true" className="size-4" />
-                  Add action item
-                </button>
-              </div>
-            )}
-          </section>
-        ) : null}
-
         <section className="flex flex-col gap-4">
           <h2 className="text-xl font-semibold text-foreground">
             Action items
@@ -461,6 +385,82 @@ export function ActionPlanDetail({
             ))
           )}
         </section>
+
+        {canManage ? (
+          <section className="app-card rounded-2xl p-4">
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+              <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
+                Plan status
+                <select
+                  value={planStatus}
+                  onChange={(event) =>
+                    setPlanStatus(event.currentTarget.value as ActionPlanStatus)
+                  }
+                  className="min-h-11 rounded-lg border border-border bg-background px-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="open">Open</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                disabled={isUpdatingPlan}
+                onClick={handlePlanStatusUpdate}
+                className="app-primary-action min-h-11 rounded-xl px-5 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted"
+              >
+                {isUpdatingPlan ? 'Updating...' : 'Update Status'}
+              </button>
+            </div>
+            {statusState.message ? (
+              <p
+                aria-live="polite"
+                className={`mt-3 rounded-lg border px-3 py-2 text-sm font-medium ${stateTone(
+                  statusState.status
+                )}`}
+              >
+                {statusState.message}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
+        {canManage ? (
+          <section className="app-card rounded-2xl p-4 sm:p-5">
+            {showCreateItemForm ? (
+              <ActionPlanItemForm
+                actionPlanId={actionPlan.id}
+                disabled={!canManage}
+                onCancel={() => setShowCreateItemForm(false)}
+                onSuccess={() => setShowCreateItemForm(false)}
+              />
+            ) : (
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 gap-3">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+                    <Plus aria-hidden="true" className="size-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-semibold text-foreground">
+                      Add action item
+                    </h2>
+                    <p className="mt-1 text-sm leading-6 text-muted">
+                      Add one focused, measurable follow-up action at a time.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateItemForm(true)}
+                  className="app-primary-action inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20 sm:w-auto"
+                >
+                  <Plus aria-hidden="true" className="size-4" />
+                  Add action item
+                </button>
+              </div>
+            )}
+          </section>
+        ) : null}
       </section>
       <MobileBottomNav role={userRole} active="action-plans" />
     </main>
