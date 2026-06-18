@@ -1,10 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import {
+  ArrowLeft,
+  ArrowRight,
   CircleCheck,
+  Clock,
+  Mail,
   MapPin,
+  Pencil,
+  Phone,
+  Plus,
   Store,
   UserPlus,
   Users,
@@ -33,6 +40,8 @@ type StoreManagementClientProps = {
   stores: StoreManagementRow[]
   storeManagers: StoreManagerOption[]
 }
+
+type MobileStoreMode = 'list' | 'detail' | 'create' | 'edit'
 
 type FieldConfig = {
   name: string
@@ -83,6 +92,29 @@ function StatusMessage({ state }: { state: StoreMutationState }) {
 
 function textValue(value: string | null | undefined) {
   return value ?? ''
+}
+
+function locationSummary(store: StoreManagementRow) {
+  return (
+    [store.city, store.terminal, store.airsideLandside]
+      .filter(Boolean)
+      .join(' - ') || 'Location not specified'
+  )
+}
+
+function addressSummary(store: StoreManagementRow) {
+  return (
+    [
+      store.addressLine1,
+      store.addressLine2,
+      store.city,
+      store.countyOrState,
+      store.postcode,
+      store.country,
+    ]
+      .filter(Boolean)
+      .join(', ') || 'Address not specified'
+  )
 }
 
 function Field({
@@ -585,6 +617,202 @@ function StoreUpdateForm({
   )
 }
 
+function MobileStoreCard({
+  store,
+  onOpen,
+}: {
+  store: StoreManagementRow
+  onOpen: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="w-full rounded-[1.35rem] border border-border bg-surface p-4 text-left shadow-[0_16px_38px_rgba(23,26,31,0.08)] transition active:scale-[0.99]"
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary">
+          <Store aria-hidden="true" className="size-6" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${
+                store.isActive
+                  ? 'border-success/20 bg-success-soft text-success'
+                  : 'border-warning/20 bg-warning-soft text-warning'
+              }`}
+            >
+              {store.isActive ? (
+                <CircleCheck aria-hidden="true" className="size-3.5" />
+              ) : (
+                <Clock aria-hidden="true" className="size-3.5" />
+              )}
+              {store.isActive ? 'Active' : 'Inactive'}
+            </span>
+            <span className="rounded-full border border-border bg-surface-soft px-2 py-1 text-xs font-semibold text-muted">
+              Store {store.code}
+            </span>
+          </div>
+          <h2 className="mt-3 text-lg font-semibold text-foreground">
+            {store.name}
+          </h2>
+          <p className="mt-1 text-sm text-muted">{locationSummary(store)}</p>
+          <p className="mt-2 text-sm text-muted">
+            {store.storeManagerName
+              ? `Manager: ${store.storeManagerName}`
+              : 'No store manager assigned'}
+          </p>
+        </div>
+        <ArrowRight aria-hidden="true" className="mt-2 size-5 text-muted" />
+      </div>
+    </button>
+  )
+}
+
+function MobileStoreDetail({
+  store,
+  onBack,
+  onEdit,
+}: {
+  store: StoreManagementRow
+  onBack: () => void
+  onEdit: () => void
+}) {
+  return (
+    <section className="grid gap-4">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex min-h-10 w-fit items-center gap-2 rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm"
+      >
+        <ArrowLeft aria-hidden="true" className="size-4" />
+        Back to stores
+      </button>
+
+      <section className="overflow-hidden rounded-[1.5rem] border border-border bg-surface shadow-[0_18px_45px_rgba(23,26,31,0.10)]">
+        <div className="bg-info p-5 text-white">
+          <div className="flex items-start gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white ring-1 ring-white/15">
+              <Store aria-hidden="true" className="size-6" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                Store profile
+              </p>
+              <h1 className="mt-2 text-2xl font-semibold">{store.name}</h1>
+              <p className="mt-1 text-sm text-slate-300">Store {store.code}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-4">
+          <div className="flex flex-wrap gap-2">
+            <span
+              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
+                store.isActive
+                  ? 'border-success/20 bg-success-soft text-success'
+                  : 'border-warning/20 bg-warning-soft text-warning'
+              }`}
+            >
+              {store.isActive ? (
+                <CircleCheck aria-hidden="true" className="size-3.5" />
+              ) : (
+                <Clock aria-hidden="true" className="size-3.5" />
+              )}
+              {store.isActive ? 'Active' : 'Inactive'}
+            </span>
+            <span className="rounded-full border border-border bg-surface-soft px-3 py-1 text-xs font-semibold text-muted">
+              {store.areaName}
+            </span>
+          </div>
+
+          <div className="grid gap-3">
+            <div className="rounded-2xl border border-border bg-surface-soft p-4">
+              <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                <Users aria-hidden="true" className="size-4 text-primary" />
+                Manager
+              </p>
+              <p className="mt-2 text-sm font-semibold text-foreground">
+                {store.storeManagerName ?? 'No store manager assigned'}
+              </p>
+              {store.storeManagerEmail ? (
+                <p className="mt-1 text-xs text-muted">{store.storeManagerEmail}</p>
+              ) : null}
+            </div>
+
+            <div className="rounded-2xl border border-border bg-surface-soft p-4">
+              <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                <MapPin aria-hidden="true" className="size-4 text-primary" />
+                Location
+              </p>
+              <p className="mt-2 text-sm font-semibold text-foreground">
+                {locationSummary(store)}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted">
+                {addressSummary(store)}
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border bg-surface-soft p-4">
+                <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                  <Phone aria-hidden="true" className="size-4 text-primary" />
+                  Phone
+                </p>
+                <p className="mt-2 text-sm font-semibold text-foreground">
+                  {store.phone ?? 'Not set'}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-surface-soft p-4">
+                <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                  <Mail aria-hidden="true" className="size-4 text-primary" />
+                  Email
+                </p>
+                <p className="mt-2 break-words text-sm font-semibold text-foreground">
+                  {store.email ?? 'Not set'}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-surface-soft p-4">
+              <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                <Clock aria-hidden="true" className="size-4 text-primary" />
+                Opening
+              </p>
+              <p className="mt-2 whitespace-pre-line text-sm font-semibold text-foreground">
+                {store.openingHours ?? 'Opening hours not set'}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-surface-soft p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Performance
+              </p>
+              <p className="mt-2 text-sm font-semibold text-foreground">
+                No recent audit data
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted">
+                Store performance will appear here when audit data is added to
+                this management view.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onEdit}
+            className="app-primary-action inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-white"
+          >
+            <Pencil aria-hidden="true" className="size-4" />
+            Edit store details
+          </button>
+        </div>
+      </section>
+    </section>
+  )
+}
+
 export function StoreManagementClient({
   profile,
   areas,
@@ -592,6 +820,19 @@ export function StoreManagementClient({
   storeManagers,
 }: StoreManagementClientProps) {
   const activeStoreCount = stores.filter((store) => store.isActive).length
+  const [mobileMode, setMobileMode] = useState<MobileStoreMode>('list')
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null)
+  const selectedStore =
+    stores.find((store) => store.id === selectedStoreId) ?? stores[0] ?? null
+
+  function openStore(storeId: string) {
+    setSelectedStoreId(storeId)
+    setMobileMode('detail')
+  }
+
+  function backToStoreList() {
+    setMobileMode('list')
+  }
 
   return (
     <main className="min-h-screen bg-background">
@@ -628,6 +869,129 @@ export function StoreManagementClient({
       </header>
 
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 pb-28 pt-5 sm:px-6 lg:gap-6 lg:px-8 lg:pb-8 lg:pt-6">
+        <section className="lg:hidden">
+          {mobileMode === 'list' ? (
+            <div className="grid gap-4">
+              <section className="rounded-[1.5rem] border border-white/10 bg-info p-5 text-white shadow-[0_18px_45px_rgba(23,26,31,0.14)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                      Stores
+                    </p>
+                    <h1 className="mt-2 text-2xl font-semibold">
+                      Store Management
+                    </h1>
+                    <p className="mt-1 text-sm text-slate-300">
+                      {activeStoreCount} active{' '}
+                      {activeStoreCount === 1 ? 'store' : 'stores'} -{' '}
+                      {stores.length} total
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMobileMode('create')}
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-[0_12px_26px_rgba(209,31,58,0.28)]"
+                  >
+                    <Plus aria-hidden="true" className="size-4" />
+                    Create store
+                  </button>
+                </div>
+              </section>
+
+              <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+                <div className="min-w-[9.5rem] rounded-2xl border border-border bg-surface p-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                    Total
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-foreground">
+                    {stores.length}
+                  </p>
+                </div>
+                <div className="min-w-[9.5rem] rounded-2xl border border-success/20 bg-success-soft p-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-success">
+                    Active
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-success">
+                    {activeStoreCount}
+                  </p>
+                </div>
+                <div className="min-w-[9.5rem] rounded-2xl border border-primary/20 bg-primary-soft p-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                    Managers
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-primary">
+                    {storeManagers.length}
+                  </p>
+                </div>
+              </section>
+
+              <section className="grid gap-3">
+                {stores.length > 0 ? (
+                  stores.map((store) => (
+                    <MobileStoreCard
+                      key={store.id}
+                      store={store}
+                      onOpen={() => openStore(store.id)}
+                    />
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-border bg-surface p-6 text-center shadow-sm">
+                    <h2 className="text-lg font-semibold text-foreground">
+                      No stores found
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      Stores you can manage will appear here once they are
+                      created.
+                    </p>
+                  </div>
+                )}
+              </section>
+            </div>
+          ) : null}
+
+          {mobileMode === 'detail' && selectedStore ? (
+            <MobileStoreDetail
+              store={selectedStore}
+              onBack={backToStoreList}
+              onEdit={() => setMobileMode('edit')}
+            />
+          ) : null}
+
+          {mobileMode === 'create' ? (
+            <section className="grid gap-4">
+              <button
+                type="button"
+                onClick={backToStoreList}
+                className="inline-flex min-h-10 w-fit items-center gap-2 rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm"
+              >
+                <ArrowLeft aria-hidden="true" className="size-4" />
+                Back to stores
+              </button>
+              <CreateStoreForm areas={areas} profile={profile} />
+            </section>
+          ) : null}
+
+          {mobileMode === 'edit' && selectedStore ? (
+            <section className="grid gap-4">
+              <button
+                type="button"
+                onClick={() => setMobileMode('detail')}
+                className="inline-flex min-h-10 w-fit items-center gap-2 rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm"
+              >
+                <ArrowLeft aria-hidden="true" className="size-4" />
+                Back to store summary
+              </button>
+              <StoreUpdateForm
+                store={selectedStore}
+                profile={profile}
+                areas={areas}
+                storeManagers={storeManagers}
+              />
+            </section>
+          ) : null}
+        </section>
+
+        <div className="hidden flex-col gap-6 lg:flex">
         <section className="app-card rounded-[1.5rem] p-5 sm:p-7">
           <p className="text-sm font-semibold text-primary">
             Store Management
@@ -725,6 +1089,7 @@ export function StoreManagementClient({
             </div>
           )}
         </section>
+        </div>
       </section>
       <MobileBottomNav role={profile.role} active="stores" />
     </main>

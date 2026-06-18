@@ -290,8 +290,26 @@ export function AuditHistoryList({
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-28 pt-5 sm:px-6 lg:gap-5 lg:px-8 lg:pb-8 lg:pt-6">
-        <section className="app-card rounded-[1.5rem] p-5 sm:p-7">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-28 pt-4 sm:px-6 lg:gap-5 lg:px-8 lg:pb-8 lg:pt-6">
+        <section className="rounded-[1.5rem] border border-white/10 bg-info p-4 text-white shadow-[0_18px_45px_rgba(23,26,31,0.14)] lg:hidden">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                Audit History
+              </p>
+              <h1 className="mt-1 text-2xl font-semibold">Audit History</h1>
+              <p className="mt-1 text-sm text-slate-300">
+                {filteredAudits.length}{' '}
+                {filteredAudits.length === 1 ? 'audit' : 'audits'} in scope
+              </p>
+            </div>
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white">
+              <ClipboardList aria-hidden="true" className="size-5" />
+            </div>
+          </div>
+        </section>
+
+        <section className="app-card hidden rounded-[1.5rem] p-5 sm:p-7 lg:block">
           <p className="text-sm font-semibold text-primary">Audit History</p>
           <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -313,23 +331,23 @@ export function AuditHistoryList({
           </div>
         </section>
 
-        <section className="app-card rounded-2xl p-4">
-          <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+        <section className="app-card rounded-[1.25rem] p-3 sm:p-4">
+          <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr] lg:gap-4">
             <form action="/audits" className="flex flex-col gap-2">
               <label
                 htmlFor="audit-search"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-foreground"
+                className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted lg:text-sm lg:normal-case lg:tracking-normal lg:text-foreground"
               >
                 <Search aria-hidden="true" className="size-4 text-primary" />
                 Search store
               </label>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex gap-2">
                 <input
                   id="audit-search"
                   name="q"
                   defaultValue={searchQuery}
                   placeholder="Store name or code"
-                  className="min-h-11 flex-1 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="min-h-10 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 sm:min-h-11"
                 />
                 {activeStatus ? (
                   <input type="hidden" name="status" value={activeStatus} />
@@ -343,33 +361,34 @@ export function AuditHistoryList({
                 ) : null}
                 <button
                   type="submit"
-                  className="min-h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/20 sm:min-h-11 sm:px-5"
                 >
-                  Search
+                  <Search aria-hidden="true" className="size-4 sm:hidden" />
+                  <span className="sr-only sm:not-sr-only">Search</span>
                 </button>
               </div>
             </form>
 
-            <div className="flex items-end">
+            <div className="flex items-end justify-start lg:justify-end">
               <Link
                 href="/audits"
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="inline-flex min-h-10 w-auto items-center justify-center rounded-xl border border-border bg-white px-3 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 sm:min-h-11 sm:px-4 lg:w-full"
               >
                 Clear filters
               </Link>
             </div>
           </div>
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div className="mt-4 grid gap-4 lg:mt-5 lg:grid-cols-2">
             <div>
-              <p className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+              <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted lg:text-sm lg:normal-case lg:tracking-normal lg:text-foreground">
                 <SlidersHorizontal
                   aria-hidden="true"
                   className="size-4 text-primary"
                 />
                 Status
               </p>
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              <div className="mt-2 flex gap-2 overflow-x-auto pb-1 lg:mt-3">
                 {STATUS_OPTIONS.map((option) => {
                   const isActive = option.value === activeStatus
 
@@ -381,7 +400,7 @@ export function AuditHistoryList({
                         scoreBand: activeScoreBand,
                         searchQuery,
                       })}
-                    className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                    className={`shrink-0 rounded-full border px-3 py-2 text-sm font-semibold transition sm:px-4 ${
                         isActive
                           ? 'border-primary bg-primary text-white'
                           : 'border-border bg-background text-foreground hover:border-primary hover:text-primary'
@@ -395,10 +414,10 @@ export function AuditHistoryList({
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted lg:text-sm lg:normal-case lg:tracking-normal lg:text-foreground">
                 Score band
               </p>
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              <div className="mt-2 flex gap-2 overflow-x-auto pb-1 lg:mt-3">
                 {SCORE_BAND_OPTIONS.map((option) => {
                   const isActive = option.value === activeScoreBand
 
@@ -410,7 +429,7 @@ export function AuditHistoryList({
                         scoreBand: option.value,
                         searchQuery,
                       })}
-                    className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                    className={`shrink-0 rounded-full border px-3 py-2 text-sm font-semibold transition sm:px-4 ${
                         isActive
                           ? 'border-primary bg-primary text-white'
                           : 'border-border bg-background text-foreground hover:border-primary hover:text-primary'
@@ -447,11 +466,11 @@ export function AuditHistoryList({
             {filteredAudits.map((audit) => (
               <article
                 key={audit.id}
-                className="app-card rounded-[1.35rem] p-4 transition hover:border-primary/30 hover:shadow-[0_18px_40px_rgba(23,26,31,0.10)]"
+                className="app-card rounded-[1.25rem] p-3 transition hover:border-primary/30 hover:shadow-[0_18px_40px_rgba(23,26,31,0.10)] sm:p-4"
               >
-                <div className="grid gap-4 xl:grid-cols-[1fr_18rem_auto] xl:items-center">
+                <div className="grid gap-3 xl:grid-cols-[1fr_18rem_auto] xl:items-center">
                   <div className="flex items-start gap-3 sm:gap-4">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary sm:size-12">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary sm:size-12">
                       <Store aria-hidden="true" className="size-5" />
                     </div>
                     <div className="min-w-0">
@@ -490,6 +509,11 @@ export function AuditHistoryList({
                       <h2 className="mt-2 text-base font-semibold text-foreground sm:text-lg">
                         {audit.storeName}
                       </h2>
+                      <p className="text-xs font-semibold text-muted sm:text-sm">
+                        {isPretAudit(audit)
+                          ? 'Pret CE V1 checklist'
+                          : 'Legacy checklist'}
+                      </p>
                       <p className="text-sm font-medium text-muted">
                         Store {audit.storeCode} - {audit.areaName}
                       </p>
@@ -513,7 +537,7 @@ export function AuditHistoryList({
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
                     <div className="rounded-xl border border-border bg-surface-soft p-3">
                       <p className="text-xs font-semibold text-muted">Score</p>
                       <p className="mt-1 text-sm font-semibold text-foreground">
@@ -534,7 +558,7 @@ export function AuditHistoryList({
 
                   <Link
                     href={`/audits/${audit.id}`}
-                    className="app-primary-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-primary/20"
+                    className="app-primary-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-white transition focus:outline-none focus:ring-4 focus:ring-primary/20"
                   >
                     Open audit
                     <ArrowRight aria-hidden="true" className="size-4" />
