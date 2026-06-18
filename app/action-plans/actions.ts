@@ -9,6 +9,18 @@ import type {
   ActionPlanStatus,
   ActionPriority,
 } from '@/components/action-plans/types'
+import {
+  buildCompletedAuditAiContext,
+  AuditAiContextError,
+} from '@/lib/ai/build-audit-ai-context'
+import {
+  generateAuditActionPlan,
+  AI_ACTION_PLAN_PROMPT_VERSION,
+  AiGenerationError,
+} from '@/lib/ai/generate-audit-action-plan'
+import { createAiInputHash } from '@/lib/ai/hash'
+import { isMissingOpenAiApiKeyError } from '@/lib/ai/openai'
+import type { AiActionPlanPayload } from '@/lib/ai/schemas'
 import { isUserRole, type ProfileRow } from '@/lib/auth/profile'
 import { createClient } from '@/lib/supabase/server'
 
@@ -46,6 +58,19 @@ type ExistingPlanRow = {
   id: string
 }
 
+type CreateAiActionPlanRpcRow = {
+  action_plan_id: string
+  ai_insight_id: string
+}
+
+type GenerateAiActionPlanState = {
+  success: boolean
+  status: 'success' | 'error'
+  message: string
+  actionPlanId?: string
+  aiInsightId?: string
+}
+
 function errorState(message: string): ActionPlanActionState {
   return { status: 'error', message }
 }
@@ -55,6 +80,25 @@ function successState(
   actionPlanId?: string
 ): ActionPlanActionState {
   return { status: 'success', message, actionPlanId }
+}
+
+function aiSuccessState({
+  message,
+  actionPlanId,
+  aiInsightId,
+}: {
+  message: string
+  actionPlanId: string
+  aiInsightId: string
+}): GenerateAiActionPlanState {
+  return { success: true, status: 'success', message, actionPlanId, aiInsightId }
+}
+
+function aiErrorState(
+  message: string,
+  actionPlanId?: string
+): GenerateAiActionPlanState {
+  return { success: false, status: 'error', message, actionPlanId }
 }
 
 function isActionPriority(value: string): value is ActionPriority {
@@ -132,6 +176,52 @@ function validatePayload(payload: ActionPlanItemPayload) {
       status: payload.status,
     },
   }
+}
+
+function aiGenerationErrorMessage(error: unknown) {
+  if (isMissingOpenAiApiKeyError(error)) {
+    return 'AI generation is not configured yet. Add OPENAI_API_KEY on the server.'
+  }
+
+  if (error instanceof AuditAiContextError) {
+    return error.message
+  }
+
+  if (error instanceof AiGenerationError) {
+    return 'AI returned an invalid action plan. Try again later.'
+  }
+
+  return 'Could not generate an AI action plan. Try again later.'
+}
+
+function aiRpcErrorMessage(error: { code?: string; message?: string }) {
+  const message = error.message?.toLowerCase() ?? ''
+
+  if (
+    error.code === '23505' ||
+    message.includes('already exists') ||
+    message.includes('duplicate')
+  ) {
+    return 'This audit already has an action plan.'
+  }
+
+  if (
+    error.code === '42501' ||
+    message.includes('permission') ||
+    message.includes('access denied')
+  ) {
+    return 'You do not have permission to generate a plan for this audit.'
+  }
+
+  if (message.includes('completed audits') || message.includes('completed')) {
+    return 'AI action plans can only be generated for completed audits.'
+  }
+
+  if (message.includes('action items') || message.includes('payload')) {
+    return 'AI returned an invalid action plan. Try again later.'
+  }
+
+  return 'Could not save the AI action plan. Try again later.'
 }
 
 async function getAuthenticatedProfile(
@@ -313,6 +403,115 @@ export async function createActionPlanForAuditAction(
   revalidatePath(`/action-plans/${createdPlan.id}`)
 
   return successState('Action plan created successfully.', createdPlan.id)
+}
+
+export async function generateAiActionPlanForAuditAction(
+  auditId: string
+): Promise<GenerateAiActionPlanState> {
+  const cleanAuditId = auditId.trim()
+
+  if (!cleanAuditId) {
+    return aiErrorState('Audit id is required.')
+  }
+
+  const supabase = await createClient()
+  const { profile, error: accessError } = await getAuthenticatedProfile(
+    supabase,
+    'You must be signed in to generate an AI action plan.'
+  )
+
+  if (accessError || !profile) {
+    return aiErrorState(accessError ?? 'You cannot generate this action plan.')
+  }
+
+  const { data: audit, error: auditError } = await supabase
+    .from('audits')
+    .select('id, store_id, status')
+    .eq('id', cleanAuditId)
+    .single<AuditForPlanRow>()
+
+  if (auditError || !audit) {
+    return aiErrorState('Audit not found or access denied.')
+  }
+
+  if (audit.status !== 'completed') {
+    return aiErrorState(
+      'AI action plans can only be generated for completed audits.'
+    )
+  }
+
+  const store = await loadStoreScope(supabase, audit.store_id)
+
+  if (!store || !canManageStore(profile, store)) {
+    return aiErrorState(
+      'You do not have permission to generate a plan for this audit.'
+    )
+  }
+
+  const { data: existingPlan } = await supabase
+    .from('action_plans')
+    .select('id')
+    .eq('audit_id', audit.id)
+    .maybeSingle<ExistingPlanRow>()
+
+  if (existingPlan) {
+    revalidatePath(`/audits/${audit.id}`)
+    revalidatePath('/action-plans')
+    revalidatePath(`/action-plans/${existingPlan.id}`)
+
+    return {
+      success: false,
+      status: 'error',
+      message: 'This audit already has an action plan.',
+      actionPlanId: existingPlan.id,
+    }
+  }
+
+  let aiPayload: AiActionPlanPayload
+  let aiModel: string
+  let inputHash: string
+
+  try {
+    const context = await buildCompletedAuditAiContext(supabase, audit.id)
+
+    inputHash = createAiInputHash(context)
+
+    const generated = await generateAuditActionPlan(context)
+
+    aiPayload = generated.payload
+    aiModel = generated.model
+  } catch (error) {
+    return aiErrorState(aiGenerationErrorMessage(error))
+  }
+
+  const { data: created, error: rpcError } = await supabase
+    .rpc('create_ai_action_plan_v1', {
+      p_audit_id: audit.id,
+      p_input_hash: inputHash,
+      p_prompt_version: AI_ACTION_PLAN_PROMPT_VERSION,
+      p_model: aiModel,
+      p_payload: aiPayload,
+    })
+    .single<CreateAiActionPlanRpcRow>()
+
+  if (rpcError || !created) {
+    return aiErrorState(
+      rpcError
+        ? aiRpcErrorMessage(rpcError)
+        : 'Could not save the AI action plan. Try again later.'
+    )
+  }
+
+  revalidatePath(`/audits/${audit.id}`)
+  revalidatePath('/action-plans')
+  revalidatePath(`/action-plans/${created.action_plan_id}`)
+  revalidatePath('/dashboard')
+
+  return aiSuccessState({
+    message: 'AI action plan generated successfully.',
+    actionPlanId: created.action_plan_id,
+    aiInsightId: created.ai_insight_id,
+  })
 }
 
 export async function createActionPlanItemAction(

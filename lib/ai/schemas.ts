@@ -16,19 +16,22 @@ export const AiActionPlanPayloadSchema = z
         })
         .strict(),
     ),
-    action_items: z.array(
-      z
-        .object({
-          title: z.string().min(1),
-          issue_observed: z.string().min(1),
-          recommended_action: z.string().min(1),
-          owner_suggestion: z.string().min(1),
-          priority: AiPrioritySchema,
-          due_in_days: z.number().int().min(1).max(30),
-          success_measure: z.string().min(1),
-        })
-        .strict(),
-    ),
+    action_items: z
+      .array(
+        z
+          .object({
+            title: z.string().min(1),
+            issue_observed: z.string().min(1),
+            recommended_action: z.string().min(1),
+            owner_suggestion: z.string().min(1),
+            priority: AiPrioritySchema,
+            due_in_days: z.number().int().min(1).max(30),
+            success_measure: z.string().min(1),
+          })
+          .strict(),
+      )
+      .min(3)
+      .max(5),
     dashboard_insight: z
       .object({
         summary: z.string().min(1),
