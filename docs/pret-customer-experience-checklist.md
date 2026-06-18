@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the source of truth for the real Pret-style checklist and scoring model before the schema, seed data, completion RPC, and UI are updated.
+This document is the source of truth for the Pret CE V1 checklist text and scoring model used by the current app.
 
 The app V1 checklist should include only:
 
@@ -24,7 +24,7 @@ The real report's Information Only section is excluded from the app checklist fo
 
 - Final outstanding-service question.
 - Bonus max: +5 points.
-- It can bring the total from 95 to 100.
+- It is displayed separately from the core score as a possible `+5` bonus.
 - It should not penalize the shop if not achieved.
 - If no outstanding service or card is achieved, the core score remains out of 95.
 
@@ -42,7 +42,7 @@ Do not display only:
 87/100
 ```
 
-The official base score is out of 95, so the app must keep the core score visible as the primary result.
+The official base score is out of 95, so the app must keep the core score visible as the primary result and keep bonus separate.
 
 ## A. Core Score - Global Brand Standards - 95 Points
 

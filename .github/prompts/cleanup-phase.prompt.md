@@ -1,30 +1,33 @@
 # Cleanup Phase Prompt
 
-Clean the current phase implementation.
+Clean the current implementation phase.
 
 Check:
 
-- Unused imports
-- Dead code
-- Duplicated logic
-- Unnecessary console logs
-- TypeScript errors
-- Broken imports
-- Inconsistent naming
-- UI text not in English
-- Report text not in English
-- Secrets exposed in frontend
-- RLS bypasses
-- Completed audit editing loopholes
-- Unapproved feature creep
-- Placeholder code that should not remain
+- Unused imports.
+- Dead code.
+- Duplicated logic.
+- Temporary debug UI/logs.
+- TypeScript errors.
+- Broken imports.
+- Inconsistent naming.
+- UI text not in English.
+- Report text not in English.
+- Secrets exposed in frontend.
+- Service-role access in client components.
+- RLS bypasses.
+- Completed audit editing loopholes.
+- Pret CE V1 scoring regressions.
+- Role/scope permission regressions.
+- Unapproved feature creep.
 
 Run:
 
 ```bash
-npm run lint
-npm run typecheck
-npm run build
+cmd /c npm run lint
+cmd /c npm run typecheck
+cmd /c npm run build
+cmd /c git diff --check
 ```
 
 Return:

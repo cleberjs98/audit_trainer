@@ -1,107 +1,104 @@
-# Copilot Instructions — Store Audit Trainer
+# Copilot Instructions - Audit Trainer
 
-You are working on the Store Audit Trainer app.
+You are working on the Audit Trainer app.
 
-Before implementing any feature, always read the project documentation in this order:
+Before implementing a feature, read the relevant current docs:
 
-1. docs/app-bible.md
-2. docs/engineering.md
-3. docs/implementation-phases.md
-4. docs/implementation-checklist.md
-5. docs/ui-ux-design-system.md
+1. `docs/current-app-state.md`
+2. `docs/permissions.md`
+3. `docs/scoring.md`
+4. `docs/mobile-ux.md`
+5. `docs/database.md`
+6. `docs/roadmap.md`
 
 ## Core Rules
 
 - The app interface must be in English.
-- All generated reports must be in English.
-- Documentation can be in Portuguese.
-- The app is a mobile-first PWA.
-- Stack: Next.js, TypeScript, Tailwind CSS, Supabase, OpenAI API.
-- Use Next.js App Router.
-- Use TypeScript.
-- Use Tailwind CSS.
+- Generated reports must be in English.
+- Documentation may be in Portuguese or English, but current source-of-truth docs are English.
+- The app is mobile-first.
+- Stack: Next.js App Router, TypeScript, Tailwind CSS, Supabase.
 - Do not change the stack without approval.
 - Do not add features outside the approved scope.
-- Do not expose OpenAI API keys in frontend code.
-- Do not expose Supabase Service Role keys in frontend code.
+- Do not expose API keys or service-role keys in frontend code.
 - Do not disable Supabase RLS.
-- Do not allow users to access data outside their role permissions.
-- Do not allow completed audits to be edited by regular users.
-- Follow the implementation checklist phase by phase.
-- Implement only one phase or subphase at a time.
-- At the end of every phase, clean the code and run validation.
+- Do not allow users to access data outside their role/scope.
+- Do not allow completed audits to be edited through the normal UI.
+- Keep implementation changes scoped to the requested task.
 
 ## Required Validation
 
-At the end of each phase or subphase, run:
+Use Windows-safe commands:
 
 ```bash
-npm run lint
-npm run typecheck
-npm run build
+cmd /c npm run lint
+cmd /c npm run typecheck
+cmd /c npm run build
 ```
 
-If a command does not exist, create it before continuing.
+Use `cmd /c git diff --check` when requested or before commit readiness review.
 
 ## Project Roles
 
-The app supports:
+The app supports only:
 
-- Admin: full access to everything.
-- Area Manager: access to stores in their assigned area.
-- Store Manager: access to reports, audits and action plans for their own store.
-- Leader: access to audits from their own store for learning and comparison.
+- `admin`: full access.
+- `area_manager`: one area through `profiles.area_id`.
+- `store_manager`: one store through `profiles.store_id`.
+- `leader`: one store through `profiles.store_id`.
+
+Do not introduce old roles such as `auditor` or generic `manager`.
+
+Leaders are operational in V1: they can create audits and manage action plans/items for their own store, but they cannot access Team Management or Store Management.
+
+## Scoring Rules
+
+- Pret CE V1 has 19 core questions.
+- Each core question is worth 5 points.
+- Core max score is 95.
+- Outstanding Card bonus is separate and max 5.
+- Display Pret CE V1 scores as `87/95 + 0/5 bonus`.
+- Percentage and score band use core score only.
+- Do not fold bonus into `/100`.
 
 ## UI Rules
 
 - Product name displayed in the app: Audit Trainer.
-- Full project/product name: Store Audit Trainer.
-- Visual style: modern internal SaaS.
-- Identity: internal operational app for now.
-- Background: light cream.
-- Primary color: elegant burgundy.
-- Cards: soft cream/white cards with subtle beige borders.
-- Text: black primary text and warm-gray secondary text.
-- Status colors: green, amber and red.
-- Layout must be mobile-first.
-- Checklist must show one section at a time.
-- Inside each section, all questions must appear as open cards.
-- Score must display both points and percentage, for example: 76/95 · 80%.
-- Reports should be action-plan focused.
+- Visual identity: Graphite + Signal Crimson.
+- Background: `#F4F6F8`.
+- Foreground: `#171A1F`.
+- Surface: `#FFFFFF`.
+- Surface soft: `#F8FAFC`.
+- Primary: `#D11F3A`.
+- Primary dark: `#A9152D`.
+- Primary soft: `#FDE8EC`.
+- Border: `#D9DEE7`.
+- Muted: `#667085`.
+- Status colors: success green, warning amber, danger red, info graphite, bonus gold.
+- Primary crimson buttons must use white text.
+- Mobile should use soft graphite/light gray backgrounds, raised white cards, graphite panels, and crimson primary actions.
+- Desktop dashboard sidebar remains dark graphite.
+- Checklist uses the guided wizard and circular score-colored stepper.
 
-## AI Rules
+## Security Rules
 
-- AI output must be in English.
-- AI must not invent facts.
-- AI must use only audit data, scores, comments, photo captions and historical data when available.
-- AI API calls must happen only on the backend.
-- Never call OpenAI directly from the browser.
+- Use authenticated Supabase clients for app data access.
+- RLS remains the final guard.
+- Server actions must validate auth, profile, role, and scope.
+- Do not trust client-provided role, scope, ownership, store ID, or scoring metadata.
+- Raw invite tokens are never stored.
+- `token_hash` is never rendered.
+- Service role is not required for current V1 client-facing features.
 
 ## Implementation Discipline
 
-Do not build the whole app at once.
-
 For every task:
 
-1. Read the relevant docs.
-2. Identify the current phase.
-3. Implement only the requested subphase.
-4. Clean duplicated code.
-5. Remove unused imports.
-6. Remove unnecessary console logs.
-7. Validate with lint, typecheck and build.
-8. Summarize what changed.
-9. List risks or issues.
-10. Suggest the next subphase.
-11. Suggest a commit message.
-
-## Non-Negotiable Rules
-
-- App UI must be in English.
-- Reports must be in English.
-- API keys must not be exposed.
-- RLS must not be disabled.
-- Role-based access must be respected.
-- Completed audits must be locked by default.
-- Do not add unapproved features.
-- Do not skip phase validation.
+1. Read relevant docs.
+2. Inspect current code before editing.
+3. Implement only the requested scope.
+4. Preserve role/scope rules.
+5. Preserve scoring rules.
+6. Remove unused imports and debug logs.
+7. Run validation.
+8. Summarize files changed, behavior, validation, risks, and suggested commit message.

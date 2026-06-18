@@ -1,93 +1,131 @@
-# Store Audit Trainer
+# Audit Trainer
 
-A mobile-first PWA for conducting and managing store audits, built with Next.js, TypeScript, Tailwind CSS, Supabase, and OpenAI API.
+Audit Trainer is a mobile-first operational audit and action plan platform for store teams.
+
+The current V1 implementation is focused on Pret CE V1 / Store Audit Trainer workflows:
+
+- Supabase email/password authentication.
+- Controlled invitation acceptance through `/auth/callback` and `/accept-invite`.
+- Role-specific dashboard analytics.
+- Start Audit, guided Pret CE V1 checklist, Review & Complete, and Audit History.
+- Manual Action Plans V1.
+- Team Management V1 invitations and pending invite cancellation.
+- Store Management V2 with store list, profile/report view, and create/edit flows.
+- Premium Graphite + Signal Crimson mobile experience with role-aware bottom navigation.
 
 ## Stack
 
-- **Framework**: Next.js (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Database & Auth**: Supabase
-- **AI**: OpenAI API
-- **PWA**: Progressive Web App
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- Supabase Auth and PostgreSQL
+- Resend REST API for optional invitation email delivery
 
-## Setup
+OpenAI, PDF export, request access, multi-store managers, richer employee/team analytics, and AI-generated recommendations are V2/future items.
 
-### 1. Clone and install dependencies
+## Roles
+
+| Role | Scope | Current V1 access |
+| --- | --- | --- |
+| `admin` | All areas and stores | Full access to dashboard, audits, action plans, stores, team invitations, and assignments. |
+| `area_manager` | One area through `profiles.area_id` | Own-area dashboard, audits, action plans, Store Management, own-area store manager assignment, and invitations for `store_manager`/`leader`. |
+| `store_manager` | One store through `profiles.store_id` | Own-store dashboard, audits, action plans, and Team Management for inviting leaders. No Store Management access. |
+| `leader` | One store through `profiles.store_id` | Own-store audits and action plans/items. No Team Management or Store Management access. |
+
+There is no active V1 `auditor` or generic `manager` role.
+
+## Pret CE V1 Scoring
+
+- 19 required core questions.
+- Each core question is worth 5 points.
+- Core maximum score is 95.
+- Outstanding Card is a separate optional bonus worth 5.
+- Display format is `87/95 + 0/5 bonus`.
+- Percentage and score band are based on the core score only.
+
+Score bands:
+
+- `95-100`: `excellent`
+- `85-94`: `good`
+- `70-84`: `needs_focus`
+- `<70`: `critical`
+
+## Local Setup
+
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-### 2. Configure environment variables
+Create `.env.local` from `.env.example` and fill in local values.
 
-Copy `.env.example` to `.env.local` and fill in the required values:
+Required local/production variables:
 
-```bash
-cp .env.example .env.local
+```txt
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+APP_BASE_URL=
 ```
 
-Required variables:
+Optional invitation email variables:
 
-```
-NEXT_PUBLIC_SUPABASE_URL=        # Your Supabase project URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY=   # Your Supabase anon key
-SUPABASE_SERVICE_ROLE_KEY=       # Your Supabase service role key (server-side only)
-OPENAI_API_KEY=                  # Your OpenAI API key (server-side only)
-NEXT_PUBLIC_APP_URL=             # Your app URL (e.g. http://localhost:3000)
+```txt
+RESEND_API_KEY=
+INVITE_EMAIL_FROM=
 ```
 
-> **Security**: Never commit `.env.local`. Service role key and OpenAI key must only be used server-side.
+If the email variables are missing or invalid, Team Management still creates invitations and shows a one-time manual fallback link immediately after invite creation.
 
-### 3. Run the development server
+Future server-only variables are not required for current V1 client features:
 
-```bash
-npm run dev
+```txt
+# OPENAI_API_KEY=
+# SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Do not expose a Supabase service role key to the browser. The current V1 app does not require a service role key for implemented client-facing features.
 
 ## Development Commands
 
-| Command              | Description                     |
-| -------------------- | ------------------------------- |
-| `npm run dev`        | Start development server        |
-| `npm run build`      | Build for production            |
-| `npm run start`      | Start production server         |
-| `npm run lint`       | Run ESLint                      |
-| `npm run typecheck`  | Run TypeScript type checking    |
+On Windows PowerShell, prefer `cmd /c` because PowerShell execution policy may block `npm.ps1`.
 
-## Project Structure
-
-```
-app/              # Next.js App Router pages and layouts
-components/       # React components (ui, auth, dashboard, audit, etc.)
-lib/              # Utility functions and integrations
-  supabase/       # Supabase client helpers
-  scoring/        # Audit scoring logic
-  ai/             # OpenAI prompt builders and parsers
-  pdf/            # PDF generation helpers
-data/             # Static data (default checklists, etc.)
-types/            # TypeScript type definitions
-docs/             # Project documentation (added manually)
-supabase/         # Supabase migrations and policies
-public/           # Static assets
+```bash
+cmd /c npm run lint
+cmd /c npm run typecheck
+cmd /c npm run build
 ```
 
-## Documentation
+Other common commands:
 
-Project documentation is located in `docs/` and will be added manually:
+```bash
+npm run dev
+npm run start
+```
 
-- `docs/app-bible.md` — Product vision and business rules
-- `docs/engineering.md` — Technical architecture and decisions
-- `docs/implementation-phases.md` — Feature implementation phases
-- `docs/implementation-checklist.md` — Phase-by-phase checklist
-- `docs/ui-ux-design-system.md` — Design system and UI guidelines
+## Deployment
 
-## Roles
+Production target:
 
-- **Admin**: Full access
-- **Area Manager**: Access to stores in their assigned area
-- **Store Manager**: Access to reports and action plans for their store
-- **Leader**: Access to audits from their store for learning and comparison
+```txt
+https://audit-trainer.vercel.app
+```
 
+Supabase project:
+
+```txt
+Project ref: daatfutrebgmxozclthb
+URL: https://daatfutrebgmxozclthb.supabase.co
+```
+
+See [docs/deployment.md](docs/deployment.md) for Vercel setup, environment variables, Supabase Auth URLs, post-deploy testing, and rollback notes.
+
+## Documentation Map
+
+- [docs/current-app-state.md](docs/current-app-state.md) - current V1 source of truth.
+- [docs/permissions.md](docs/permissions.md) - role and scope matrix.
+- [docs/scoring.md](docs/scoring.md) - Pret CE V1 scoring.
+- [docs/mobile-ux.md](docs/mobile-ux.md) - Graphite + Signal Crimson mobile UX.
+- [docs/database.md](docs/database.md) - migrations, key tables, RPCs, and RLS notes.
+- [docs/deployment.md](docs/deployment.md) - deployment checklist.
+- [docs/roadmap.md](docs/roadmap.md) - known limitations and V2 backlog.

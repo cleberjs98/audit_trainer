@@ -1,99 +1,99 @@
 # Deployment Guide
 
-This guide prepares Audit Trainer for a safe Vercel deployment.
+This guide prepares Audit Trainer for Vercel deployment.
 
-## Vercel Deployment Steps
+## Production Targets
+
+```txt
+Production app: https://audit-trainer.vercel.app
+GitHub remote: https://github.com/cleberjs98/audit_trainer.git
+Supabase ref: daatfutrebgmxozclthb
+Supabase URL: https://daatfutrebgmxozclthb.supabase.co
+```
+
+## Vercel Setup
 
 1. Connect the GitHub repository to Vercel.
 2. Use the Vercel-detected framework preset: `Next.js`.
-3. Use these commands:
-   - Install command: `npm install`
-   - Build command: `npm run build`
-   - Output directory: default Next.js output
-4. Set environment variables in Vercel before deploying.
-5. Deploy from the intended production branch.
-6. After deployment, copy the final HTTPS deployment URL and use it as `APP_BASE_URL`.
+3. Install command: `npm install`.
+4. Build command: `npm run build`.
+5. Output directory: default Next.js output.
+6. Set environment variables before deploying.
+7. Deploy from the intended production branch.
 
 ## Required Environment Variables
 
-Set these in Vercel for production:
-
 ```txt
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-APP_BASE_URL=
+NEXT_PUBLIC_SUPABASE_URL=https://daatfutrebgmxozclthb.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon public>
+APP_BASE_URL=https://audit-trainer.vercel.app
 ```
 
-`APP_BASE_URL` must be the deployed HTTPS app URL, for example:
+Do not include a trailing slash in `APP_BASE_URL`.
 
-```txt
-https://your-app.vercel.app
-```
-
-Do not include a trailing slash.
-
-## Optional Invite Email Variables
-
-Set these only when real invitation emails are ready:
+## Optional Invitation Email Variables
 
 ```txt
 RESEND_API_KEY=
 INVITE_EMAIL_FROM=
 ```
 
-If these are not configured, Team Management still creates invitations and shows the one-time manual development invite link immediately after creation.
+If these are missing or invalid, Team Management still creates invitations and shows a one-time manual fallback link immediately after invite creation.
 
 ## Future Server-Only Variables
 
-These are not required for the current deployed V1 flow:
+These are not required for current V1 client-facing features:
 
 ```txt
-OPENAI_API_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+# OPENAI_API_KEY=
+# SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-Do not set `SUPABASE_SERVICE_ROLE_KEY` unless a future server-only feature requires it. Never expose it to the browser.
+Do not expose a Supabase service role key to the browser. Do not set it unless a future server-only feature explicitly requires it and the code path has been reviewed.
 
 ## Supabase Production Settings
 
-Before production testing:
+Confirm migrations are applied and aligned through `013`.
 
-1. Confirm migrations are already applied and aligned through the latest migration.
-2. In Supabase Auth settings, set Site URL to:
-
-```txt
-APP_BASE_URL
-```
-
-3. Add redirect URLs:
+In Supabase Auth settings:
 
 ```txt
-APP_BASE_URL/auth/callback
-APP_BASE_URL/accept-invite
+Site URL: https://audit-trainer.vercel.app
+Redirect URLs:
+  https://audit-trainer.vercel.app/auth/callback
+  https://audit-trainer.vercel.app/accept-invite
 ```
 
-4. Keep Row Level Security enabled.
-5. Do not expose the Supabase service role key in Vercel unless a server-only feature explicitly needs it.
+Keep RLS enabled.
+
+## Validation Commands
+
+On Windows PowerShell, prefer:
+
+```bash
+cmd /c npm run lint
+cmd /c npm run typecheck
+cmd /c npm run build
+```
 
 ## Post-Deploy Manual Test Checklist
-
-Run these tests on the deployed HTTPS URL:
 
 1. Login.
 2. Start a new audit.
 3. Complete a Pret CE V1 audit.
-4. Confirm Audit History shows the completed score.
+4. Confirm Audit History shows `core/max + bonus/max bonus`.
 5. Create an action plan from a completed audit.
-6. Confirm a leader can manage action plans for their own store.
-7. Create a team invite with email variables disabled and confirm the manual fallback link appears once.
+6. Confirm a leader can manage own-store action plans and items.
+7. Create a team invite with email variables disabled and confirm manual fallback appears once.
 8. Create a team invite with Resend configured and confirm the email is sent.
 9. Accept an invitation through `/accept-invite`.
-10. Create and edit a store in Store Management as an allowed role.
-11. Confirm leader access is restricted for `/team`.
-12. Confirm leader access is restricted for `/store-management`.
+10. Create and edit a store as `admin` or `area_manager`.
+11. Confirm leaders cannot access `/team`.
+12. Confirm leaders and store managers cannot access `/store-management`.
+13. Confirm mobile bottom navigation is role-aware.
 
 ## Rollback Notes
 
-- Use Vercel rollback to return to the previous deployment if an app deployment fails.
-- Do not roll back database migrations unless a specific migration is confirmed as the cause of the issue.
-- If a deployment has an environment-variable issue, update Vercel environment variables and redeploy instead of changing the database.
+- Use Vercel rollback to return to a previous deployment if an app deployment fails.
+- Do not roll back database migrations unless a specific migration is confirmed as the cause.
+- If the issue is environment configuration, update Vercel environment variables and redeploy.
