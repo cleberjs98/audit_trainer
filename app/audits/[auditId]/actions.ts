@@ -7,6 +7,7 @@ import type {
   AuditEvidenceActionState,
   AuditPeopleValues,
   CompleteAuditState,
+  DeleteAuditState,
   MissingRequiredPhotoRequirement,
   MissingAuditPersonRequirement,
   SaveAuditPeopleState,
@@ -27,9 +28,14 @@ import { createClient } from '@/lib/supabase/server'
 type AuditAccessRow = {
   id: string
   store_id: string
+  audited_by: string
   status: 'draft' | 'in_progress' | 'completed' | 'archived'
   is_locked: boolean
   scoring_model_version?: string | null
+}
+
+type AuditDeleteRow = AuditAccessRow & {
+  audited_by: string
 }
 
 type CompletedAuditCheckRow = {
@@ -168,6 +174,10 @@ async function canAccessAudit(
   profile: ProfileRow,
   audit: AuditAccessRow
 ) {
+  if (audit.status !== 'completed' && audit.audited_by !== profile.id) {
+    return false
+  }
+
   if (profile.role === 'admin') {
     return true
   }
@@ -188,6 +198,44 @@ async function canAccessAudit(
       .single<StoreScopeRow>()
 
     return !error && store?.area_id === profile.area_id
+  }
+
+  return false
+}
+
+async function canDeleteAudit(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  profile: ProfileRow,
+  audit: AuditDeleteRow
+) {
+  if (profile.role === 'admin') {
+    return true
+  }
+
+  if (profile.role === 'area_manager') {
+    if (!profile.area_id) {
+      return false
+    }
+
+    const { data: store, error } = await supabase
+      .from('stores')
+      .select('id, area_id')
+      .eq('id', audit.store_id)
+      .single<StoreScopeRow>()
+
+    return !error && store?.area_id === profile.area_id
+  }
+
+  if (profile.role === 'store_manager') {
+    return Boolean(profile.store_id) && audit.store_id === profile.store_id
+  }
+
+  if (profile.role === 'leader') {
+    return (
+      audit.audited_by === profile.id &&
+      audit.status !== 'completed' &&
+      audit.status !== 'archived'
+    )
   }
 
   return false
@@ -443,6 +491,35 @@ function auditEvidenceWriteErrorMessage(error: SupabaseActionError) {
   return 'Could not update photo evidence. Check the file and try again.'
 }
 
+function auditDeleteErrorMessage(error: SupabaseActionError) {
+  const message = error.message?.toLowerCase() ?? ''
+
+  if (
+    error.code === '42501' ||
+    message.includes('permission') ||
+    message.includes('access denied')
+  ) {
+    return 'You do not have permission to delete this audit.'
+  }
+
+  if (error.code === '23503' || message.includes('foreign key')) {
+    return 'This audit has linked records that prevented deletion.'
+  }
+
+  return 'Could not delete this audit. Try again.'
+}
+
+function isStorageMissingObjectError(error: SupabaseActionError) {
+  const message = error.message?.toLowerCase() ?? ''
+
+  return (
+    error.code === '404' ||
+    message.includes('not found') ||
+    message.includes('not exist') ||
+    message.includes('does not exist')
+  )
+}
+
 async function loadMissingCommentRequirements(
   supabase: Awaited<ReturnType<typeof createClient>>,
   auditId: string
@@ -659,7 +736,7 @@ export async function registerAuditEvidenceAction(input: {
 
   const { data: audit, error: auditError } = await access.supabase
     .from('audits')
-    .select('id, store_id, status, is_locked, scoring_model_version')
+    .select('id, store_id, audited_by, status, is_locked, scoring_model_version')
     .eq('id', auditId)
     .single<AuditAccessRow>()
 
@@ -793,7 +870,7 @@ export async function deleteAuditEvidenceAction(
 
   const { data: audit, error: auditError } = await access.supabase
     .from('audits')
-    .select('id, store_id, status, is_locked, scoring_model_version')
+    .select('id, store_id, audited_by, status, is_locked, scoring_model_version')
     .eq('id', evidence.audit_id)
     .single<AuditAccessRow>()
 
@@ -859,6 +936,114 @@ export async function deleteAuditEvidenceAction(
   }
 }
 
+export async function deleteAuditAction(
+  auditId: string
+): Promise<DeleteAuditState> {
+  const access = await getSaveAnswerAccess(
+    'You must be signed in to delete this audit.'
+  )
+
+  if (!access.ok) {
+    return { status: 'error', message: access.error }
+  }
+
+  const trimmedAuditId = auditId.trim()
+
+  if (!trimmedAuditId) {
+    return { status: 'error', message: 'Audit not found or access denied.' }
+  }
+
+  const { data: audit, error: auditError } = await access.supabase
+    .from('audits')
+    .select('id, store_id, audited_by, status, is_locked, scoring_model_version')
+    .eq('id', trimmedAuditId)
+    .single<AuditDeleteRow>()
+
+  if (auditError || !audit) {
+    return { status: 'error', message: 'Audit not found or access denied.' }
+  }
+
+  const allowed = await canDeleteAudit(access.supabase, access.profile, audit)
+
+  if (!allowed) {
+    return {
+      status: 'error',
+      message: 'You do not have permission to delete this audit.',
+    }
+  }
+
+  const { data: evidenceRows, error: evidenceError } = await access.supabase
+    .from('audit_evidence')
+    .select('file_path')
+    .eq('audit_id', audit.id)
+    .returns<Array<{ file_path: string }>>()
+
+  if (evidenceError) {
+    console.error(
+      '[audit_delete] Could not load audit evidence before delete',
+      safeSupabaseErrorSummary(evidenceError)
+    )
+
+    return {
+      status: 'error',
+      message: 'Could not prepare photo evidence cleanup. Try again.',
+    }
+  }
+
+  const evidencePaths = Array.from(
+    new Set(
+      (evidenceRows ?? [])
+        .map((row) => row.file_path.trim())
+        .filter(Boolean)
+    )
+  )
+
+  if (evidencePaths.length > 0) {
+    const { error: storageError } = await access.supabase.storage
+      .from(AUDIT_EVIDENCE_BUCKET)
+      .remove(evidencePaths)
+
+    if (storageError && !isStorageMissingObjectError(storageError)) {
+      console.error(
+        '[audit_delete] Storage cleanup failed',
+        safeSupabaseErrorSummary(storageError)
+      )
+
+      return {
+        status: 'error',
+        message: 'Could not remove audit photo files. The audit was not deleted.',
+      }
+    }
+  }
+
+  const { error: deleteError } = await access.supabase
+    .from('audits')
+    .delete()
+    .eq('id', audit.id)
+
+  if (deleteError) {
+    console.error(
+      '[audit_delete] Audit delete failed',
+      safeSupabaseErrorSummary(deleteError)
+    )
+
+    return {
+      status: 'error',
+      message: auditDeleteErrorMessage(deleteError),
+    }
+  }
+
+  revalidatePath('/audits')
+  revalidatePath(`/audits/${audit.id}`)
+  revalidatePath('/dashboard')
+  revalidatePath('/action-plans')
+
+  return {
+    status: 'success',
+    message: 'Audit deleted.',
+  }
+}
+
 export async function saveAuditPeopleAction(
   auditId: string,
   peopleInput: AuditPeopleValues
@@ -907,7 +1092,7 @@ export async function saveAuditPeopleAction(
 
   const { data: audit, error: auditError } = await access.supabase
     .from('audits')
-    .select('id, store_id, status, is_locked, scoring_model_version')
+    .select('id, store_id, audited_by, status, is_locked, scoring_model_version')
     .eq('id', trimmedAuditId)
     .single<AuditAccessRow>()
 
@@ -993,7 +1178,7 @@ export async function saveAuditAnswerAction(
 
   const { data: audit, error: auditError } = await access.supabase
     .from('audits')
-    .select('id, store_id, status, is_locked, scoring_model_version')
+    .select('id, store_id, audited_by, status, is_locked, scoring_model_version')
     .eq('id', auditId)
     .single<AuditAccessRow>()
 
@@ -1119,7 +1304,7 @@ export async function completeAuditAction(
 
   const { data: audit, error: auditError } = await access.supabase
     .from('audits')
-    .select('id, store_id, status, is_locked, scoring_model_version')
+    .select('id, store_id, audited_by, status, is_locked, scoring_model_version')
     .eq('id', trimmedAuditId)
     .single<AuditAccessRow>()
 

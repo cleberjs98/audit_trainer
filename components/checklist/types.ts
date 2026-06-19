@@ -165,6 +165,11 @@ export type AuditEvidenceActionState = {
   evidenceId?: string
 }
 
+export type DeleteAuditState = {
+  status: 'idle' | 'success' | 'error'
+  message: string
+}
+
 export const initialSaveAnswerState: SaveAnswerState = {
   status: 'idle',
   message: '',
@@ -181,6 +186,11 @@ export const initialSaveAuditPeopleState: SaveAuditPeopleState = {
 }
 
 export const initialAuditEvidenceActionState: AuditEvidenceActionState = {
+  status: 'idle',
+  message: '',
+}
+
+export const initialDeleteAuditState: DeleteAuditState = {
   status: 'idle',
   message: '',
 }

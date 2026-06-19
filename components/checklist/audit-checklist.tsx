@@ -26,6 +26,7 @@ import {
 
 import {
   completeAuditAction,
+  deleteAuditAction,
   deleteAuditEvidenceAction,
   registerAuditEvidenceAction,
   saveAuditPeopleAction,
@@ -41,11 +42,13 @@ import {
   ChecklistSection,
   initialAuditEvidenceActionState,
   initialCompleteAuditState,
+  initialDeleteAuditState,
   initialSaveAnswerState,
   initialSaveAuditPeopleState,
   ScorePreview,
   type CompleteAuditState,
   type AuditEvidenceActionState,
+  type DeleteAuditState,
   type MissingAuditPersonRequirement,
   type MissingRequiredPhotoRequirement,
   type SaveAuditPeopleState,
@@ -84,6 +87,7 @@ type AuditChecklistProps = {
     status: 'open' | 'in_progress' | 'completed'
   } | null
   canManageActionPlans: boolean
+  canDeleteAudit: boolean
   userRole: UserRole
 }
 
@@ -304,7 +308,11 @@ function statusTone(status: SaveAnswerState['status'] | CompleteAuditState['stat
 function StatusMessage({
   state,
 }: {
-  state: SaveAnswerState | CompleteAuditState | SaveAuditPeopleState
+  state:
+    | SaveAnswerState
+    | CompleteAuditState
+    | SaveAuditPeopleState
+    | DeleteAuditState
 }) {
   if (!state.message) {
     return null
@@ -319,6 +327,116 @@ function StatusMessage({
     >
       {state.message}
     </p>
+  )
+}
+
+function DeleteAuditCard({
+  audit,
+  canDeleteAudit,
+}: {
+  audit: ChecklistAudit
+  canDeleteAudit: boolean
+}) {
+  const router = useRouter()
+  const [confirmed, setConfirmed] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [state, setState] = useState<DeleteAuditState>(initialDeleteAuditState)
+
+  if (!canDeleteAudit) {
+    return null
+  }
+
+  async function handleDeleteAudit() {
+    if (!confirmed) {
+      setConfirmed(true)
+      setState(initialDeleteAuditState)
+      return
+    }
+
+    setIsDeleting(true)
+
+    try {
+      const result = await deleteAuditAction(audit.id)
+      setState(result)
+
+      if (result.status === 'success') {
+        router.push('/audits')
+        router.refresh()
+      }
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-danger/20 bg-danger-soft text-danger">
+            <Trash2 aria-hidden="true" className="size-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">Danger zone</p>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              Permanently remove this audit and its audit-owned records.
+            </p>
+          </div>
+        </div>
+        {!confirmed ? (
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={handleDeleteAudit}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-danger/30 bg-white px-4 text-sm font-semibold text-danger transition hover:border-danger hover:bg-danger-soft focus:outline-none focus:ring-4 focus:ring-danger/15 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Delete audit
+          </button>
+        ) : null}
+      </div>
+
+      {confirmed ? (
+        <div className="mt-4 rounded-2xl border border-danger/20 bg-danger-soft p-4 text-danger">
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-danger">
+              <Trash2 aria-hidden="true" className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Confirm permanent delete</p>
+              <p className="mt-1 text-sm leading-6">
+                This will permanently delete the audit, answers, report access,
+                linked action plans, and photo evidence. This cannot be undone.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={() => {
+                setConfirmed(false)
+                setState(initialDeleteAuditState)
+              }}
+              className="inline-flex min-h-12 items-center justify-center rounded-xl border border-border bg-white px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-4 focus:ring-primary/15 disabled:cursor-not-allowed disabled:text-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={handleDeleteAudit}
+              className="inline-flex min-h-12 items-center justify-center rounded-xl bg-danger px-4 text-sm font-semibold text-white transition hover:bg-danger/90 focus:outline-none focus:ring-4 focus:ring-danger/20 disabled:cursor-not-allowed disabled:bg-muted"
+            >
+              {isDeleting ? 'Deleting...' : 'Confirm delete'}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-3">
+        <StatusMessage state={state} />
+      </div>
+    </section>
   )
 }
 
@@ -1456,6 +1574,7 @@ export function AuditChecklist({
   auditPeople,
   actionPlan,
   canManageActionPlans,
+  canDeleteAudit,
   userRole,
 }: AuditChecklistProps) {
   const initialAnswers = useMemo(() => initialAnswerMap(sections), [sections])
@@ -1987,6 +2106,8 @@ export function AuditChecklist({
             </section>
           )}
         </div>
+
+        <DeleteAuditCard audit={audit} canDeleteAudit={canDeleteAudit} />
       </section>
       <MobileBottomNav role={userRole} active="audits" />
     </main>

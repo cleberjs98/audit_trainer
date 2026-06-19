@@ -19,6 +19,7 @@ import { createClient } from '@/lib/supabase/server'
 type AuditRow = {
   id: string
   store_id: string
+  audited_by: string
   status: ChecklistAudit['status']
   is_locked: boolean
   visit_date: string
@@ -324,6 +325,50 @@ function AuditAccessFallback() {
   )
 }
 
+function canViewAudit(profile: ProfileRow, audit: AuditRow, store: StoreRow) {
+  if (audit.status !== 'completed') {
+    return audit.audited_by === profile.id
+  }
+
+  if (profile.role === 'admin') {
+    return true
+  }
+
+  if (profile.role === 'area_manager') {
+    return Boolean(profile.area_id) && store.area_id === profile.area_id
+  }
+
+  if (profile.role === 'store_manager' || profile.role === 'leader') {
+    return Boolean(profile.store_id) && audit.store_id === profile.store_id
+  }
+
+  return false
+}
+
+function canDeleteAudit(profile: ProfileRow, audit: AuditRow, store: StoreRow) {
+  if (profile.role === 'admin') {
+    return true
+  }
+
+  if (profile.role === 'area_manager') {
+    return Boolean(profile.area_id) && store.area_id === profile.area_id
+  }
+
+  if (profile.role === 'store_manager') {
+    return Boolean(profile.store_id) && audit.store_id === profile.store_id
+  }
+
+  if (profile.role === 'leader') {
+    return (
+      audit.audited_by === profile.id &&
+      audit.status !== 'completed' &&
+      audit.status !== 'archived'
+    )
+  }
+
+  return false
+}
+
 export default async function AuditDetailPage({
   params,
 }: {
@@ -354,7 +399,7 @@ export default async function AuditDetailPage({
   const { data: audit, error: auditError } = await supabase
     .from('audits')
     .select(
-      'id, store_id, status, is_locked, visit_date, visit_time, mod, shift_type, traffic_level, visit_type, total_score, max_score, percentage, score_band, section_scores, scoring_model_version, completed_at'
+      'id, store_id, audited_by, status, is_locked, visit_date, visit_time, mod, shift_type, traffic_level, visit_type, total_score, max_score, percentage, score_band, section_scores, scoring_model_version, completed_at'
     )
     .eq('id', auditId)
     .single<AuditRow>()
@@ -370,6 +415,10 @@ export default async function AuditDetailPage({
     .single<StoreRow>()
 
   if (storeError || !store) {
+    return <AuditAccessFallback />
+  }
+
+  if (!canViewAudit(profile, audit, store)) {
     return <AuditAccessFallback />
   }
 
@@ -460,6 +509,7 @@ export default async function AuditDetailPage({
       auditPeople={toAuditPeopleValues(auditPeopleRows ?? [])}
       actionPlan={actionPlan ?? null}
       canManageActionPlans={true}
+      canDeleteAudit={canDeleteAudit(profile, audit, store)}
       userRole={profile.role}
     />
   )

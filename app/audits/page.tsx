@@ -93,7 +93,8 @@ function buildAuditItems(
   audits: AuditRow[],
   stores: StoreRow[],
   areas: AreaRow[],
-  creators: CreatorRow[]
+  creators: CreatorRow[],
+  profile: ProfileRow
 ): AuditHistoryItem[] {
   const storesById = new Map(stores.map((store) => [store.id, store]))
   const areasById = new Map(areas.map((area) => [area.id, area]))
@@ -125,8 +126,49 @@ function buildAuditItems(
       scoringModelVersion: audit.scoring_model_version ?? 'legacy_62_v1',
       createdAt: audit.created_at,
       completedAt: audit.completed_at,
+      canDelete: canDeleteAuditListItem(profile, audit, store),
     }
   })
+}
+
+function canDeleteAuditListItem(
+  profile: ProfileRow,
+  audit: AuditRow,
+  store: StoreRow | undefined
+) {
+  if (profile.role === 'admin') {
+    return true
+  }
+
+  if (!store) {
+    return false
+  }
+
+  if (profile.role === 'area_manager') {
+    return Boolean(profile.area_id) && store.area_id === profile.area_id
+  }
+
+  if (profile.role === 'store_manager') {
+    return Boolean(profile.store_id) && audit.store_id === profile.store_id
+  }
+
+  if (profile.role === 'leader') {
+    return (
+      audit.audited_by === profile.id &&
+      audit.status !== 'completed' &&
+      audit.status !== 'archived'
+    )
+  }
+
+  return false
+}
+
+function isVisibleAuditListItem(profile: ProfileRow, audit: AuditRow) {
+  if (audit.status === 'completed') {
+    return true
+  }
+
+  return audit.audited_by === profile.id
 }
 
 export default async function AuditHistoryPage({
@@ -170,6 +212,12 @@ export default async function AuditHistoryPage({
 
   if (activeStatus) {
     auditQuery = auditQuery.eq('status', activeStatus)
+
+    if (activeStatus !== 'completed') {
+      auditQuery = auditQuery.eq('audited_by', user.id)
+    }
+  } else {
+    auditQuery = auditQuery.or(`status.eq.completed,audited_by.eq.${user.id}`)
   }
 
   if (activeScoreBand) {
@@ -182,7 +230,9 @@ export default async function AuditHistoryPage({
     .order('created_at', { ascending: false })
     .limit(50)
     .returns<AuditRow[]>()
-  const audits = auditRows ?? []
+  const audits = (auditRows ?? []).filter((audit) =>
+    isVisibleAuditListItem(profile, audit)
+  )
   const storeIds = Array.from(new Set(audits.map((audit) => audit.store_id)))
   const creatorIds = Array.from(new Set(audits.map((audit) => audit.audited_by)))
 
@@ -224,7 +274,7 @@ export default async function AuditHistoryPage({
 
   return (
     <AuditHistoryList
-      audits={buildAuditItems(audits, stores, areas, creators)}
+      audits={buildAuditItems(audits, stores, areas, creators, profile)}
       activeStatus={activeStatus}
       activeScoreBand={activeScoreBand}
       searchQuery={searchQuery}
