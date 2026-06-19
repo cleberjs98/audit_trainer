@@ -15,28 +15,39 @@ import {
   Gauge,
   Star,
   Target,
+  Users,
 } from 'lucide-react'
 
 import {
   completeAuditAction,
+  saveAuditPeopleAction,
   saveAuditAnswerAction,
 } from '@/app/audits/[auditId]/actions'
 import { GenerateAiActionPlanButton } from '@/components/ai/generate-ai-action-plan-button'
 import {
   ChecklistAnswer,
   ChecklistAudit,
+  AuditPeopleValues,
   ChecklistQuestion,
   ChecklistSection,
   initialCompleteAuditState,
   initialSaveAnswerState,
+  initialSaveAuditPeopleState,
   ScorePreview,
   type CompleteAuditState,
+  type MissingAuditPersonRequirement,
+  type SaveAuditPeopleState,
   type SaveAnswerState,
 } from '@/components/checklist/types'
 import {
   MobileAppHeader,
   MobileBottomNav,
 } from '@/components/navigation/mobile-app-shell'
+import {
+  auditPeopleFields,
+  findMissingAuditPeople,
+  normalizeAuditPersonName,
+} from '@/lib/audits/audit-people'
 import {
   commentRequirementReason,
   commentRequirementText,
@@ -49,6 +60,7 @@ type AuditChecklistProps = {
   audit: ChecklistAudit
   sections: ChecklistSection[]
   scorePreview: ScorePreview
+  auditPeople: AuditPeopleValues
   actionPlan: {
     id: string
     status: 'open' | 'in_progress' | 'completed'
@@ -273,7 +285,7 @@ function statusTone(status: SaveAnswerState['status'] | CompleteAuditState['stat
 function StatusMessage({
   state,
 }: {
-  state: SaveAnswerState | CompleteAuditState
+  state: SaveAnswerState | CompleteAuditState | SaveAuditPeopleState
 }) {
   if (!state.message) {
     return null
@@ -523,6 +535,23 @@ function missingCommentButtonLabel(requirement: MissingCommentRequirement) {
   return 'Bonus'
 }
 
+function missingPeopleLabels(
+  requirements: MissingAuditPersonRequirement[]
+) {
+  return requirements.map((requirement) => requirement.label).join(', ')
+}
+
+function peopleValuesEqual(left: AuditPeopleValues, right: AuditPeopleValues) {
+  return (
+    normalizeAuditPersonName(left.teamMemberName) ===
+      normalizeAuditPersonName(right.teamMemberName) &&
+    normalizeAuditPersonName(left.baristaName) ===
+      normalizeAuditPersonName(right.baristaName) &&
+    normalizeAuditPersonName(left.modName) ===
+      normalizeAuditPersonName(right.modName)
+  )
+}
+
 function QuestionInput({
   question,
   draft,
@@ -668,6 +697,7 @@ function ReviewCompleteCard({
   requiredCoreCount,
   missingRequiredCoreQuestions,
   missingCommentRequirements,
+  auditPeople,
   preview,
   onQuestionSelect,
 }: {
@@ -678,6 +708,7 @@ function ReviewCompleteCard({
   requiredCoreCount: number
   missingRequiredCoreQuestions: ChecklistQuestion[]
   missingCommentRequirements: MissingCommentRequirement[]
+  auditPeople: AuditPeopleValues
   preview: ScorePreview
   onQuestionSelect: (index: number) => void
 }) {
@@ -687,9 +718,27 @@ function ReviewCompleteCard({
   )
   const [confirmed, setConfirmed] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)
+  const [peopleValues, setPeopleValues] =
+    useState<AuditPeopleValues>(auditPeople)
+  const [savedPeopleValues, setSavedPeopleValues] =
+    useState<AuditPeopleValues>(auditPeople)
+  const [peopleState, setPeopleState] = useState<SaveAuditPeopleState>(
+    initialSaveAuditPeopleState
+  )
+  const [isSavingPeople, setIsSavingPeople] = useState(false)
   const canComplete =
     !readOnly && (audit.status === 'draft' || audit.status === 'in_progress')
   const hasMissingRequired = missingRequiredCoreQuestions.length > 0
+  const missingSavedPeople = findMissingAuditPeople(savedPeopleValues)
+  const visibleMissingPeople =
+    missingSavedPeople.length > 0
+      ? missingSavedPeople
+      : state.missingPeopleFields ?? []
+  const hasMissingPeople = visibleMissingPeople.length > 0
+  const hasUnsavedPeopleChanges = !peopleValuesEqual(
+    peopleValues,
+    savedPeopleValues
+  )
   const visibleMissingCommentRequirements =
     missingCommentRequirements.length > 0
       ? missingCommentRequirements
@@ -698,7 +747,37 @@ function ReviewCompleteCard({
   const shouldShowCompletionState =
     !isRequiredCompletionMessage(state.message) ||
     hasMissingRequired ||
+    hasMissingPeople ||
     hasMissingComments
+
+  function updatePeopleValue(key: keyof AuditPeopleValues, value: string) {
+    setPeopleValues((currentValues) => ({
+      ...currentValues,
+      [key]: value,
+    }))
+    setPeopleState(initialSaveAuditPeopleState)
+  }
+
+  async function handleSavePeople() {
+    setIsSavingPeople(true)
+
+    try {
+      const result = await saveAuditPeopleAction(audit.id, peopleValues)
+      setPeopleState(result)
+
+      if (result.status === 'success' && result.people) {
+        setPeopleValues(result.people)
+        setSavedPeopleValues(result.people)
+        setState((currentState) => ({
+          ...currentState,
+          missingPeopleFields: undefined,
+        }))
+        router.refresh()
+      }
+    } finally {
+      setIsSavingPeople(false)
+    }
+  }
 
   async function handleCompleteAudit() {
     if (hasMissingRequired) {
@@ -709,11 +788,28 @@ function ReviewCompleteCard({
       return
     }
 
+    if (hasMissingPeople) {
+      setState({
+        status: 'error',
+        message: 'Please complete people on duty before completing the audit.',
+        missingPeopleFields: visibleMissingPeople,
+      })
+      return
+    }
+
     if (hasMissingComments) {
       setState({
         status: 'error',
         message: 'Please add the required comments before completing the audit.',
         missingCommentRequirements: visibleMissingCommentRequirements,
+      })
+      return
+    }
+
+    if (hasUnsavedPeopleChanges) {
+      setState({
+        status: 'error',
+        message: 'Please save people on duty before completing the audit.',
       })
       return
     }
@@ -778,6 +874,12 @@ function ReviewCompleteCard({
             </p>
           </div>
           <div className="rounded-xl border border-border bg-background p-3">
+            <p className="text-xs font-semibold text-muted">People missing</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">
+              {visibleMissingPeople.length}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-background p-3">
             <p className="text-xs font-semibold text-muted">
               {audit.maxScore > 0 ? 'Final score' : 'Preview'}
             </p>
@@ -785,6 +887,74 @@ function ReviewCompleteCard({
               {audit.maxScore > 0 ? persistedScoreLabel(audit) : scoreLabel(preview)}
             </p>
           </div>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-white p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+              <Users aria-hidden="true" className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">
+                People on duty
+              </p>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                Required audit context. These names do not affect the score.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3">
+            {auditPeopleFields.map((field) => (
+              <label
+                key={field.personType}
+                className="flex flex-col gap-2 text-sm font-semibold text-foreground"
+              >
+                {field.label}
+                {canComplete ? (
+                  <input
+                    type="text"
+                    value={peopleValues[field.key]}
+                    onChange={(event) =>
+                      updatePeopleValue(field.key, event.currentTarget.value)
+                    }
+                    maxLength={120}
+                    placeholder={field.label}
+                    className="min-h-12 rounded-xl border border-border bg-surface px-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
+                  />
+                ) : (
+                  <div className="min-h-12 rounded-xl border border-border bg-background px-3 py-3 text-base font-medium text-foreground">
+                    {savedPeopleValues[field.key] || 'Not recorded'}
+                  </div>
+                )}
+              </label>
+            ))}
+          </div>
+
+          {visibleMissingPeople.length > 0 ? (
+            <div className="mt-3 rounded-lg border border-warning/20 bg-warning-soft px-3 py-3 text-sm font-medium leading-6 text-warning">
+              Required before completion: {missingPeopleLabels(visibleMissingPeople)}
+            </div>
+          ) : null}
+
+          {hasUnsavedPeopleChanges ? (
+            <div className="mt-3 rounded-lg border border-warning/20 bg-warning-soft px-3 py-3 text-sm font-medium leading-6 text-warning">
+              Save people on duty before completing the audit.
+            </div>
+          ) : null}
+
+          <StatusMessage state={peopleState} />
+
+          {canComplete ? (
+            <button
+              type="button"
+              disabled={isSavingPeople || !hasUnsavedPeopleChanges}
+              onClick={handleSavePeople}
+              className="mt-4 min-h-12 w-full rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted"
+            >
+              {isSavingPeople ? 'Saving...' : 'Save people on duty'}
+            </button>
+          ) : null}
         </div>
 
         {missingRequiredCoreQuestions.length > 0 ? (
@@ -861,10 +1031,13 @@ function ReviewCompleteCard({
 
       {canComplete ? (
         <div className="mt-5 flex flex-col gap-4">
-          {hasMissingRequired || hasMissingComments ? (
+          {hasMissingRequired ||
+          hasMissingPeople ||
+          hasMissingComments ||
+          hasUnsavedPeopleChanges ? (
             <div className="rounded-lg border border-warning/20 bg-warning-soft px-3 py-3 text-sm font-medium leading-6 text-warning">
-              Completion is locked until every required answer and comment is
-              complete.
+              Completion is locked until every required answer, comment, and
+              people field is complete.
             </div>
           ) : (
             <>
@@ -892,7 +1065,12 @@ function ReviewCompleteCard({
           <button
             type="button"
             disabled={
-              !confirmed || hasMissingRequired || hasMissingComments || isCompleting
+              !confirmed ||
+              hasMissingRequired ||
+              hasMissingPeople ||
+              hasMissingComments ||
+              hasUnsavedPeopleChanges ||
+              isCompleting
             }
             onClick={handleCompleteAudit}
             className="min-h-12 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-muted"
@@ -913,6 +1091,7 @@ export function AuditChecklist({
   audit,
   sections,
   scorePreview,
+  auditPeople,
   actionPlan,
   canManageActionPlans,
   userRole,
@@ -1246,6 +1425,7 @@ export function AuditChecklist({
               requiredCoreCount={requiredCoreQuestions.length}
               missingRequiredCoreQuestions={missingRequiredCoreQuestions}
               missingCommentRequirements={missingCommentRequirements}
+              auditPeople={auditPeople}
               preview={preview}
               onQuestionSelect={handleJumpToStep}
             />

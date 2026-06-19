@@ -4,6 +4,7 @@ import { AuditChecklist } from '@/components/checklist/audit-checklist'
 import type {
   ChecklistAnswer,
   ChecklistAudit,
+  AuditPeopleValues,
   ChecklistQuestion,
   ChecklistSection,
   ChecklistStore,
@@ -78,6 +79,11 @@ type AnswerRow = {
 type ActionPlanSummaryRow = {
   id: string
   status: 'open' | 'in_progress' | 'completed'
+}
+
+type AuditPersonRow = {
+  person_type: 'team_member' | 'barista' | 'mod'
+  typed_name: string
 }
 
 function toNumber(value: number | string | null | undefined) {
@@ -232,6 +238,26 @@ function calculateScorePreview(sections: ChecklistSection[]): ScorePreview {
   }
 }
 
+function toAuditPeopleValues(rows: AuditPersonRow[]): AuditPeopleValues {
+  const values: AuditPeopleValues = {
+    teamMemberName: '',
+    baristaName: '',
+    modName: '',
+  }
+
+  for (const row of rows) {
+    if (row.person_type === 'team_member') {
+      values.teamMemberName = row.typed_name
+    } else if (row.person_type === 'barista') {
+      values.baristaName = row.typed_name
+    } else if (row.person_type === 'mod') {
+      values.modName = row.typed_name
+    }
+  }
+
+  return values
+}
+
 function AuditAccessFallback() {
   return (
     <main className="min-h-screen bg-background">
@@ -305,6 +331,7 @@ export default async function AuditDetailPage({
     { data: questionRows },
     { data: answerRows },
     { data: actionPlan },
+    { data: auditPeopleRows },
   ] =
     await Promise.all([
       supabase
@@ -334,6 +361,11 @@ export default async function AuditDetailPage({
         .select('id, status')
         .eq('audit_id', audit.id)
         .maybeSingle<ActionPlanSummaryRow>(),
+      supabase
+        .from('audit_people')
+        .select('person_type, typed_name')
+        .eq('audit_id', audit.id)
+        .returns<AuditPersonRow[]>(),
     ])
 
   const sections = buildSections(
@@ -348,6 +380,7 @@ export default async function AuditDetailPage({
       audit={toChecklistAudit(audit, store)}
       sections={sections}
       scorePreview={scorePreview}
+      auditPeople={toAuditPeopleValues(auditPeopleRows ?? [])}
       actionPlan={actionPlan ?? null}
       canManageActionPlans={true}
       userRole={profile.role}

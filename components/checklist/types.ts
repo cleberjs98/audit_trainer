@@ -89,6 +89,19 @@ export type ScorePreview = {
   answeredCount: number
 }
 
+export type AuditPersonType = 'team_member' | 'barista' | 'mod'
+
+export type AuditPeopleValues = {
+  teamMemberName: string
+  baristaName: string
+  modName: string
+}
+
+export type MissingAuditPersonRequirement = {
+  personType: AuditPersonType
+  label: string
+}
+
 export type SaveAnswerState = {
   status: 'idle' | 'success' | 'error'
   message: string
@@ -113,6 +126,13 @@ export type CompleteAuditState = {
   status: 'idle' | 'success' | 'error'
   message: string
   missingCommentRequirements?: MissingCommentRequirement[]
+  missingPeopleFields?: MissingAuditPersonRequirement[]
+}
+
+export type SaveAuditPeopleState = {
+  status: 'idle' | 'success' | 'error'
+  message: string
+  people?: AuditPeopleValues
 }
 
 export const initialSaveAnswerState: SaveAnswerState = {
@@ -121,6 +141,11 @@ export const initialSaveAnswerState: SaveAnswerState = {
 }
 
 export const initialCompleteAuditState: CompleteAuditState = {
+  status: 'idle',
+  message: '',
+}
+
+export const initialSaveAuditPeopleState: SaveAuditPeopleState = {
   status: 'idle',
   message: '',
 }

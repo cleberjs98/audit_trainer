@@ -3,9 +3,16 @@
 import { revalidatePath } from 'next/cache'
 
 import type {
+  AuditPeopleValues,
   CompleteAuditState,
+  MissingAuditPersonRequirement,
+  SaveAuditPeopleState,
   SaveAnswerState,
 } from '@/components/checklist/types'
+import {
+  findMissingAuditPeople,
+  normalizeAuditPersonName,
+} from '@/lib/audits/audit-people'
 import {
   findMissingCommentRequirements,
   type MissingCommentRequirement,
@@ -67,6 +74,19 @@ type CompletionAnswerRow = {
   score: number | string | null
   comment: string | null
   is_critical_flag: boolean
+}
+
+type AuditPersonRow = {
+  person_type: 'team_member' | 'barista' | 'mod'
+  typed_name: string
+  team_member_id?: string | null
+}
+
+type SupabaseActionError = {
+  code?: string
+  message?: string
+  details?: string
+  hint?: string
 }
 
 type SaveAnswerAccess =
@@ -273,6 +293,80 @@ function completionErrorMessage(error: { code?: string; message?: string }) {
   return 'Could not complete this audit. Review the checklist and try again.'
 }
 
+function safeSupabaseErrorSummary(error: SupabaseActionError) {
+  return {
+    code: error.code ?? null,
+    message: error.message ?? null,
+    details: error.details ?? null,
+    hint: error.hint ?? null,
+  }
+}
+
+function auditPeopleWriteErrorMessage(error: SupabaseActionError) {
+  const message = error.message?.toLowerCase() ?? ''
+  const details = error.details?.toLowerCase() ?? ''
+  const hint = error.hint?.toLowerCase() ?? ''
+
+  if (
+    error.code === 'PGRST202' ||
+    error.code === '42P01' ||
+    message.includes('save_audit_people_v1') ||
+    message.includes('relation "public.audit_people" does not exist') ||
+    message.includes('relation "public.store_team_members" does not exist') ||
+    message.includes('schema cache') ||
+    details.includes('save_audit_people_v1') ||
+    hint.includes('schema cache')
+  ) {
+    return 'Audit people database setup is not ready. Apply migration 016, then try again.'
+  }
+
+  if (
+    error.code === '42501' ||
+    message.includes('permission') ||
+    message.includes('access denied')
+  ) {
+    return 'You do not have permission to update people for this audit.'
+  }
+
+  if (
+    message.includes('locked') ||
+    message.includes('completed') ||
+    message.includes('cannot be edited')
+  ) {
+    return 'This audit is locked and cannot be edited.'
+  }
+
+  if (
+    message.includes('required') ||
+    message.includes('120 characters') ||
+    message.includes('name')
+  ) {
+    return 'Enter Team Member, Barista, and MOD names before saving.'
+  }
+
+  return 'Could not save people on duty. Check the names and try again.'
+}
+
+function toAuditPeopleValues(rows: AuditPersonRow[]): AuditPeopleValues {
+  const people: AuditPeopleValues = {
+    teamMemberName: '',
+    baristaName: '',
+    modName: '',
+  }
+
+  for (const row of rows) {
+    if (row.person_type === 'team_member') {
+      people.teamMemberName = row.typed_name
+    } else if (row.person_type === 'barista') {
+      people.baristaName = row.typed_name
+    } else if (row.person_type === 'mod') {
+      people.modName = row.typed_name
+    }
+  }
+
+  return people
+}
+
 async function loadMissingCommentRequirements(
   supabase: Awaited<ReturnType<typeof createClient>>,
   auditId: string
@@ -329,6 +423,148 @@ async function loadMissingCommentRequirements(
   return {
     ok: true,
     missing: findMissingCommentRequirements(questions),
+  }
+}
+
+async function loadMissingAuditPeople(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  auditId: string
+): Promise<{
+  ok: true
+  missing: MissingAuditPersonRequirement[]
+} | {
+  ok: false
+  message: string
+}> {
+  const { data, error } = await supabase
+    .from('audit_people')
+    .select('person_type, typed_name')
+    .eq('audit_id', auditId)
+    .returns<AuditPersonRow[]>()
+
+  if (error) {
+    console.error(
+      '[audit_people] Could not validate missing people fields',
+      safeSupabaseErrorSummary(error)
+    )
+
+    return {
+      ok: false,
+      message: 'Could not validate people on duty. Review the details and try again.',
+    }
+  }
+
+  return {
+    ok: true,
+    missing: findMissingAuditPeople(toAuditPeopleValues(data ?? [])),
+  }
+}
+
+export async function saveAuditPeopleAction(
+  auditId: string,
+  peopleInput: AuditPeopleValues
+): Promise<SaveAuditPeopleState> {
+  const access = await getSaveAnswerAccess(
+    'You must be signed in to save people on duty.'
+  )
+
+  if (!access.ok) {
+    return { status: 'error', message: access.error }
+  }
+
+  const trimmedAuditId = auditId.trim()
+
+  if (!trimmedAuditId) {
+    return {
+      status: 'error',
+      message: 'Audit not found or access denied.',
+    }
+  }
+
+  const people: AuditPeopleValues = {
+    teamMemberName: normalizeAuditPersonName(peopleInput.teamMemberName),
+    baristaName: normalizeAuditPersonName(peopleInput.baristaName),
+    modName: normalizeAuditPersonName(peopleInput.modName),
+  }
+  const missingPeople = findMissingAuditPeople(people)
+
+  if (missingPeople.length > 0) {
+    return {
+      status: 'error',
+      message: 'Enter Team Member, Barista, and MOD names before saving.',
+    }
+  }
+
+  if (
+    people.teamMemberName.length > 120 ||
+    people.baristaName.length > 120 ||
+    people.modName.length > 120
+  ) {
+    return {
+      status: 'error',
+      message: 'People names must be 120 characters or fewer.',
+    }
+  }
+
+  const { data: audit, error: auditError } = await access.supabase
+    .from('audits')
+    .select('id, store_id, status, is_locked, scoring_model_version')
+    .eq('id', trimmedAuditId)
+    .single<AuditAccessRow>()
+
+  if (auditError || !audit) {
+    return {
+      status: 'error',
+      message: 'Audit not found or access denied.',
+    }
+  }
+
+  const canAccess = await canAccessAudit(access.supabase, access.profile, audit)
+
+  if (!canAccess) {
+    return {
+      status: 'error',
+      message: 'You do not have permission to update people for this audit.',
+    }
+  }
+
+  if (!isEditableAudit(audit.status, audit.is_locked)) {
+    return {
+      status: 'error',
+      message: 'This audit is locked and cannot be edited.',
+    }
+  }
+
+  const { data, error } = await access.supabase
+    .rpc('save_audit_people_v1', {
+      p_audit_id: audit.id,
+      p_team_member_name: people.teamMemberName,
+      p_barista_name: people.baristaName,
+      p_mod_name: people.modName,
+    })
+    .returns<AuditPersonRow[]>()
+
+  if (error) {
+    console.error(
+      '[audit_people] saveAuditPeopleAction RPC failed',
+      safeSupabaseErrorSummary(error)
+    )
+
+    return {
+      status: 'error',
+      message: auditPeopleWriteErrorMessage(error),
+    }
+  }
+
+  const savedPeople = toAuditPeopleValues(Array.isArray(data) ? data : [])
+
+  revalidatePath(`/audits/${audit.id}`)
+  revalidatePath('/audits')
+
+  return {
+    status: 'success',
+    message: 'People on duty saved.',
+    people: savedPeople,
   }
 }
 
@@ -511,6 +747,18 @@ export async function completeAuditAction(
     }
   }
 
+  const peopleValidation = await loadMissingAuditPeople(
+    access.supabase,
+    audit.id
+  )
+
+  if (!peopleValidation.ok) {
+    return {
+      status: 'error',
+      message: peopleValidation.message,
+    }
+  }
+
   const commentValidation = await loadMissingCommentRequirements(
     access.supabase,
     audit.id
@@ -526,8 +774,20 @@ export async function completeAuditAction(
   if (commentValidation.missing.length > 0) {
     return {
       status: 'error',
-      message: 'Please add the required comments before completing the audit.',
+      message:
+        peopleValidation.missing.length > 0
+          ? 'Please complete people on duty and required comments before completing the audit.'
+          : 'Please add the required comments before completing the audit.',
       missingCommentRequirements: commentValidation.missing,
+      missingPeopleFields: peopleValidation.missing,
+    }
+  }
+
+  if (peopleValidation.missing.length > 0) {
+    return {
+      status: 'error',
+      message: 'Please complete people on duty before completing the audit.',
+      missingPeopleFields: peopleValidation.missing,
     }
   }
 
