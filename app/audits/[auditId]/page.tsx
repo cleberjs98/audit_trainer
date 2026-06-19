@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 
 import { AuditChecklist } from '@/components/checklist/audit-checklist'
 import type {
+  AuditEvidence,
   ChecklistAnswer,
   ChecklistAudit,
   AuditPeopleValues,
@@ -86,6 +87,20 @@ type AuditPersonRow = {
   typed_name: string
 }
 
+type AuditEvidenceRow = {
+  id: string
+  audit_id: string
+  store_id: string
+  question_id: string | null
+  audit_answer_id: string | null
+  file_path: string
+  file_name: string | null
+  mime_type: string | null
+  file_size_bytes: number | null
+  caption: string | null
+  created_at: string
+}
+
 function toNumber(value: number | string | null | undefined) {
   if (value === null || value === undefined) {
     return 0
@@ -138,11 +153,39 @@ function toChecklistAnswer(answer: AnswerRow): ChecklistAnswer {
 function buildSections(
   sections: SectionRow[],
   questions: QuestionRow[],
-  answers: AnswerRow[]
+  answers: AnswerRow[],
+  evidenceRows: AuditEvidenceRow[],
+  signedUrlsByPath: Map<string, string>
 ): ChecklistSection[] {
   const answersByQuestion = new Map(
     answers.map((answer) => [answer.question_id, toChecklistAnswer(answer)])
   )
+  const evidenceByQuestion = new Map<string, AuditEvidence[]>()
+
+  for (const row of evidenceRows) {
+    if (!row.question_id) {
+      continue
+    }
+
+    const questionEvidence = evidenceByQuestion.get(row.question_id) ?? []
+
+    questionEvidence.push({
+      id: row.id,
+      auditId: row.audit_id,
+      storeId: row.store_id,
+      questionId: row.question_id,
+      auditAnswerId: row.audit_answer_id,
+      filePath: row.file_path,
+      fileName: row.file_name,
+      mimeType: row.mime_type,
+      fileSizeBytes: row.file_size_bytes,
+      caption: row.caption,
+      createdAt: row.created_at,
+      signedUrl: signedUrlsByPath.get(row.file_path) ?? null,
+    })
+    evidenceByQuestion.set(row.question_id, questionEvidence)
+  }
+
   const questionsBySection = new Map<string, ChecklistQuestion[]>()
 
   for (const question of questions) {
@@ -164,6 +207,10 @@ function buildSections(
       scoringModelVersion: question.scoring_model_version ?? 'legacy_62_v1',
       orderIndex: question.order_index,
       answer: answersByQuestion.get(question.id) ?? null,
+      evidence: (evidenceByQuestion.get(question.id) ?? []).sort(
+        (left, right) =>
+          new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()
+      ),
     })
 
     questionsBySection.set(question.section_id, sectionQuestions)
@@ -332,6 +379,7 @@ export default async function AuditDetailPage({
     { data: answerRows },
     { data: actionPlan },
     { data: auditPeopleRows },
+    { data: auditEvidenceRows },
   ] =
     await Promise.all([
       supabase
@@ -366,12 +414,41 @@ export default async function AuditDetailPage({
         .select('person_type, typed_name')
         .eq('audit_id', audit.id)
         .returns<AuditPersonRow[]>(),
+      supabase
+        .from('audit_evidence')
+        .select(
+          'id, audit_id, store_id, question_id, audit_answer_id, file_path, file_name, mime_type, file_size_bytes, caption, created_at'
+        )
+        .eq('audit_id', audit.id)
+        .eq('evidence_type', 'photo')
+        .order('created_at', { ascending: true })
+        .returns<AuditEvidenceRow[]>(),
     ])
+
+  const evidenceRows = auditEvidenceRows ?? []
+  const { data: signedUrlRows } =
+    evidenceRows.length > 0
+      ? await supabase.storage
+          .from('audit-evidence')
+          .createSignedUrls(
+            evidenceRows.map((evidence) => evidence.file_path),
+            60 * 60
+          )
+      : { data: [] }
+  const signedUrlsByPath = new Map<string, string>()
+
+  for (const row of signedUrlRows ?? []) {
+    if (row.path && row.signedUrl) {
+      signedUrlsByPath.set(row.path, row.signedUrl)
+    }
+  }
 
   const sections = buildSections(
     sectionRows ?? [],
     questionRows ?? [],
-    answerRows ?? []
+    answerRows ?? [],
+    evidenceRows,
+    signedUrlsByPath
   )
   const scorePreview = calculateScorePreview(sections)
 

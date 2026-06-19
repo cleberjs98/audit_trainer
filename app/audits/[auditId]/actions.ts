@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 
 import type {
+  AuditEvidence,
+  AuditEvidenceActionState,
   AuditPeopleValues,
   CompleteAuditState,
   MissingAuditPersonRequirement,
@@ -82,6 +84,20 @@ type AuditPersonRow = {
   team_member_id?: string | null
 }
 
+type AuditEvidenceRow = {
+  id: string
+  audit_id: string
+  store_id: string
+  question_id: string | null
+  audit_answer_id: string | null
+  file_path: string
+  file_name: string | null
+  mime_type: string | null
+  file_size_bytes: number | null
+  caption: string | null
+  created_at: string
+}
+
 type SupabaseActionError = {
   code?: string
   message?: string
@@ -97,8 +113,16 @@ type SaveAnswerAccess =
     }
   | {
       ok: false
-      error: string
+  error: string
     }
+
+const AUDIT_EVIDENCE_BUCKET = 'audit-evidence'
+const MAX_AUDIT_EVIDENCE_FILE_SIZE = 5 * 1024 * 1024
+const ALLOWED_AUDIT_EVIDENCE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+])
 
 async function getSaveAnswerAccess(
   signedOutMessage = 'You must be signed in to save answers.'
@@ -367,6 +391,52 @@ function toAuditPeopleValues(rows: AuditPersonRow[]): AuditPeopleValues {
   return people
 }
 
+function toAuditEvidence(
+  row: AuditEvidenceRow,
+  signedUrl: string | null
+): AuditEvidence {
+  return {
+    id: row.id,
+    auditId: row.audit_id,
+    storeId: row.store_id,
+    questionId: row.question_id,
+    auditAnswerId: row.audit_answer_id,
+    filePath: row.file_path,
+    fileName: row.file_name,
+    mimeType: row.mime_type,
+    fileSizeBytes: row.file_size_bytes,
+    caption: row.caption,
+    createdAt: row.created_at,
+    signedUrl,
+  }
+}
+
+function auditEvidenceWriteErrorMessage(error: SupabaseActionError) {
+  const message = error.message?.toLowerCase() ?? ''
+
+  if (
+    error.code === '42501' ||
+    message.includes('permission') ||
+    message.includes('access denied')
+  ) {
+    return 'You do not have permission to update photo evidence for this audit.'
+  }
+
+  if (
+    message.includes('locked') ||
+    message.includes('completed') ||
+    message.includes('cannot be edited')
+  ) {
+    return 'This audit is locked and photo evidence cannot be changed.'
+  }
+
+  if (message.includes('image') || message.includes('mime')) {
+    return 'Upload a JPEG, PNG, or WebP image.'
+  }
+
+  return 'Could not update photo evidence. Check the file and try again.'
+}
+
 async function loadMissingCommentRequirements(
   supabase: Awaited<ReturnType<typeof createClient>>,
   auditId: string
@@ -457,6 +527,254 @@ async function loadMissingAuditPeople(
   return {
     ok: true,
     missing: findMissingAuditPeople(toAuditPeopleValues(data ?? [])),
+  }
+}
+
+export async function registerAuditEvidenceAction(input: {
+  auditId: string
+  questionId: string
+  filePath: string
+  fileName: string
+  mimeType: string
+  fileSizeBytes: number
+  caption?: string
+}): Promise<AuditEvidenceActionState> {
+  const access = await getSaveAnswerAccess(
+    'You must be signed in to upload photo evidence.'
+  )
+
+  if (!access.ok) {
+    return { status: 'error', message: access.error }
+  }
+
+  const auditId = input.auditId.trim()
+  const questionId = input.questionId.trim()
+  const filePath = input.filePath.trim()
+  const fileName = input.fileName.trim()
+  const mimeType = input.mimeType.trim().toLowerCase()
+  const caption = input.caption?.trim() || null
+
+  if (!auditId || !questionId || !filePath || !fileName) {
+    return {
+      status: 'error',
+      message: 'Photo evidence details are incomplete. Try uploading again.',
+    }
+  }
+
+  if (!ALLOWED_AUDIT_EVIDENCE_MIME_TYPES.has(mimeType)) {
+    return { status: 'error', message: 'Upload a JPEG, PNG, or WebP image.' }
+  }
+
+  if (
+    !Number.isFinite(input.fileSizeBytes) ||
+    input.fileSizeBytes <= 0 ||
+    input.fileSizeBytes > MAX_AUDIT_EVIDENCE_FILE_SIZE
+  ) {
+    return {
+      status: 'error',
+      message: 'Photo evidence must be 5MB or smaller.',
+    }
+  }
+
+  const { data: audit, error: auditError } = await access.supabase
+    .from('audits')
+    .select('id, store_id, status, is_locked, scoring_model_version')
+    .eq('id', auditId)
+    .single<AuditAccessRow>()
+
+  if (auditError || !audit) {
+    return { status: 'error', message: 'Audit not found or access denied.' }
+  }
+
+  const canAccess = await canAccessAudit(access.supabase, access.profile, audit)
+
+  if (!canAccess) {
+    return {
+      status: 'error',
+      message: 'You do not have permission to update photo evidence for this audit.',
+    }
+  }
+
+  if (!isEditableAudit(audit.status, audit.is_locked)) {
+    return {
+      status: 'error',
+      message: 'This audit is locked and photo evidence cannot be changed.',
+    }
+  }
+
+  const { data: question, error: questionError } = await access.supabase
+    .from('audit_questions')
+    .select('id, is_active')
+    .eq('id', questionId)
+    .single<{ id: string; is_active: boolean }>()
+
+  if (questionError || !question?.is_active) {
+    return { status: 'error', message: 'Question not found or inactive.' }
+  }
+
+  const expectedPrefix = `stores/${audit.store_id}/audits/${audit.id}/questions/${question.id}/`
+
+  if (!filePath.startsWith(expectedPrefix)) {
+    return {
+      status: 'error',
+      message: 'Photo evidence path is invalid for this audit question.',
+    }
+  }
+
+  const { data: answer } = await access.supabase
+    .from('audit_answers')
+    .select('id')
+    .eq('audit_id', audit.id)
+    .eq('question_id', question.id)
+    .maybeSingle<{ id: string }>()
+
+  const { data: evidenceRow, error: evidenceError } = await access.supabase
+    .from('audit_evidence')
+    .insert({
+      audit_id: audit.id,
+      store_id: audit.store_id,
+      question_id: question.id,
+      audit_answer_id: answer?.id ?? null,
+      evidence_type: 'photo',
+      bucket_id: AUDIT_EVIDENCE_BUCKET,
+      file_path: filePath,
+      file_name: fileName,
+      mime_type: mimeType,
+      file_size_bytes: input.fileSizeBytes,
+      caption,
+      created_by: access.profile.id,
+    })
+    .select(
+      'id, audit_id, store_id, question_id, audit_answer_id, file_path, file_name, mime_type, file_size_bytes, caption, created_at'
+    )
+    .single<AuditEvidenceRow>()
+
+  if (evidenceError || !evidenceRow) {
+    if (evidenceError) {
+      console.error(
+        '[audit_evidence] registerAuditEvidenceAction failed',
+        safeSupabaseErrorSummary(evidenceError)
+      )
+    }
+
+    return {
+      status: 'error',
+      message: evidenceError
+        ? auditEvidenceWriteErrorMessage(evidenceError)
+        : 'Could not save photo evidence. Try uploading again.',
+    }
+  }
+
+  const { data: signedUrlData } = await access.supabase.storage
+    .from(AUDIT_EVIDENCE_BUCKET)
+    .createSignedUrl(evidenceRow.file_path, 60 * 60)
+
+  revalidatePath(`/audits/${audit.id}`)
+
+  return {
+    status: 'success',
+    message: 'Photo evidence uploaded.',
+    evidence: toAuditEvidence(evidenceRow, signedUrlData?.signedUrl ?? null),
+  }
+}
+
+export async function deleteAuditEvidenceAction(
+  evidenceId: string
+): Promise<AuditEvidenceActionState> {
+  const access = await getSaveAnswerAccess(
+    'You must be signed in to remove photo evidence.'
+  )
+
+  if (!access.ok) {
+    return { status: 'error', message: access.error }
+  }
+
+  const trimmedEvidenceId = evidenceId.trim()
+
+  if (!trimmedEvidenceId) {
+    return { status: 'error', message: 'Photo evidence not found.' }
+  }
+
+  const { data: evidence, error: evidenceError } = await access.supabase
+    .from('audit_evidence')
+    .select('id, audit_id, store_id, file_path')
+    .eq('id', trimmedEvidenceId)
+    .single<{
+      id: string
+      audit_id: string
+      store_id: string
+      file_path: string
+    }>()
+
+  if (evidenceError || !evidence) {
+    return { status: 'error', message: 'Photo evidence not found or access denied.' }
+  }
+
+  const { data: audit, error: auditError } = await access.supabase
+    .from('audits')
+    .select('id, store_id, status, is_locked, scoring_model_version')
+    .eq('id', evidence.audit_id)
+    .single<AuditAccessRow>()
+
+  if (auditError || !audit || audit.store_id !== evidence.store_id) {
+    return { status: 'error', message: 'Audit not found or access denied.' }
+  }
+
+  const canAccess = await canAccessAudit(access.supabase, access.profile, audit)
+
+  if (!canAccess) {
+    return {
+      status: 'error',
+      message: 'You do not have permission to remove photo evidence for this audit.',
+    }
+  }
+
+  if (!isEditableAudit(audit.status, audit.is_locked)) {
+    return {
+      status: 'error',
+      message: 'This audit is locked and photo evidence cannot be changed.',
+    }
+  }
+
+  const { error: storageError } = await access.supabase.storage
+    .from(AUDIT_EVIDENCE_BUCKET)
+    .remove([evidence.file_path])
+
+  if (storageError) {
+    console.error(
+      '[audit_evidence] deleteAuditEvidenceAction storage remove failed',
+      safeSupabaseErrorSummary(storageError)
+    )
+
+    return {
+      status: 'error',
+      message: 'Could not remove the photo file. Try again.',
+    }
+  }
+
+  const { error: deleteError } = await access.supabase
+    .from('audit_evidence')
+    .delete()
+    .eq('id', evidence.id)
+
+  if (deleteError) {
+    console.error(
+      '[audit_evidence] deleteAuditEvidenceAction metadata delete failed',
+      safeSupabaseErrorSummary(deleteError)
+    )
+
+    return {
+      status: 'error',
+      message: auditEvidenceWriteErrorMessage(deleteError),
+    }
+  }
+
+  revalidatePath(`/audits/${audit.id}`)
+
+  return {
+    status: 'success',
+    message: 'Photo evidence removed.',
+    evidenceId: evidence.id,
   }
 }
 

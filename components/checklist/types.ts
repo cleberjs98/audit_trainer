@@ -53,6 +53,21 @@ export type ChecklistAnswer = {
   isCriticalFlag: boolean
 }
 
+export type AuditEvidence = {
+  id: string
+  auditId: string
+  storeId: string
+  questionId: string | null
+  auditAnswerId: string | null
+  filePath: string
+  fileName: string | null
+  mimeType: string | null
+  fileSizeBytes: number | null
+  caption: string | null
+  createdAt: string
+  signedUrl: string | null
+}
+
 export type ChecklistQuestion = {
   id: string
   sectionId: string
@@ -68,6 +83,7 @@ export type ChecklistQuestion = {
   scoringModelVersion: string
   orderIndex: number
   answer: ChecklistAnswer | null
+  evidence: AuditEvidence[]
 }
 
 export type ChecklistSection = {
@@ -135,6 +151,13 @@ export type SaveAuditPeopleState = {
   people?: AuditPeopleValues
 }
 
+export type AuditEvidenceActionState = {
+  status: 'idle' | 'success' | 'error'
+  message: string
+  evidence?: AuditEvidence
+  evidenceId?: string
+}
+
 export const initialSaveAnswerState: SaveAnswerState = {
   status: 'idle',
   message: '',
@@ -146,6 +169,11 @@ export const initialCompleteAuditState: CompleteAuditState = {
 }
 
 export const initialSaveAuditPeopleState: SaveAuditPeopleState = {
+  status: 'idle',
+  message: '',
+}
+
+export const initialAuditEvidenceActionState: AuditEvidenceActionState = {
   status: 'idle',
   message: '',
 }

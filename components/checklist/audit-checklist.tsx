@@ -1,25 +1,32 @@
 'use client'
 
 import {
+  type ChangeEvent,
   useMemo,
   useRef,
   useState,
 } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  Camera,
   ClipboardCheck,
   Gauge,
+  Image as ImageIcon,
   Star,
   Target,
+  Trash2,
   Users,
 } from 'lucide-react'
 
 import {
   completeAuditAction,
+  deleteAuditEvidenceAction,
+  registerAuditEvidenceAction,
   saveAuditPeopleAction,
   saveAuditAnswerAction,
 } from '@/app/audits/[auditId]/actions'
@@ -27,14 +34,17 @@ import { GenerateAiActionPlanButton } from '@/components/ai/generate-ai-action-p
 import {
   ChecklistAnswer,
   ChecklistAudit,
+  AuditEvidence,
   AuditPeopleValues,
   ChecklistQuestion,
   ChecklistSection,
+  initialAuditEvidenceActionState,
   initialCompleteAuditState,
   initialSaveAnswerState,
   initialSaveAuditPeopleState,
   ScorePreview,
   type CompleteAuditState,
+  type AuditEvidenceActionState,
   type MissingAuditPersonRequirement,
   type SaveAuditPeopleState,
   type SaveAnswerState,
@@ -54,6 +64,8 @@ import {
   findMissingCommentRequirements,
   type MissingCommentRequirement,
 } from '@/lib/audits/comment-requirements'
+import { photoRequirementText } from '@/lib/audits/photo-requirements'
+import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/types/user'
 
 type AuditChecklistProps = {
@@ -72,6 +84,7 @@ type AuditChecklistProps = {
 type WizardMode = 'question' | 'review'
 
 type LocalAnswerMap = Record<string, ChecklistAnswer>
+type EvidenceMap = Record<string, AuditEvidence[]>
 
 type DraftAnswer = {
   score: string
@@ -358,13 +371,15 @@ function initialAnswerMap(sections: ChecklistSection[]) {
 
 function flattenQuestions(
   sections: ChecklistSection[],
-  answers: LocalAnswerMap
+  answers: LocalAnswerMap,
+  evidenceByQuestion: EvidenceMap
 ) {
   return sections
     .flatMap((section) =>
       section.questions.map((question) => ({
         ...question,
         answer: answers[question.id] ?? question.answer,
+        evidence: evidenceByQuestion[question.id] ?? question.evidence,
       }))
     )
     .sort((left, right) => {
@@ -381,6 +396,14 @@ function flattenQuestions(
 
       return left.orderIndex - right.orderIndex
     })
+}
+
+function initialEvidenceMap(questions: ChecklistQuestion[]) {
+  return questions.reduce<EvidenceMap>((evidenceByQuestion, question) => {
+    evidenceByQuestion[question.id] = question.evidence
+
+    return evidenceByQuestion
+  }, {})
 }
 
 function initialDraftMap(questions: ChecklistQuestion[]) {
@@ -686,6 +709,243 @@ function QuestionInput({
         </label>
       ) : null}
     </>
+  )
+}
+
+function evidenceFileExtension(file: File) {
+  if (file.type === 'image/jpeg') {
+    return 'jpg'
+  }
+
+  if (file.type === 'image/png') {
+    return 'png'
+  }
+
+  if (file.type === 'image/webp') {
+    return 'webp'
+  }
+
+  return null
+}
+
+function safeFileName(fileName: string, extension: string) {
+  const baseName = fileName
+    .replace(/\.[^/.]+$/, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
+
+  return `${baseName || 'photo'}.${extension}`
+}
+
+function PhotoEvidenceSection({
+  audit,
+  question,
+  readOnly,
+  onEvidenceAdded,
+  onEvidenceRemoved,
+}: {
+  audit: ChecklistAudit
+  question: ChecklistQuestion
+  readOnly: boolean
+  onEvidenceAdded: (questionId: string, evidence: AuditEvidence) => void
+  onEvidenceRemoved: (questionId: string, evidenceId: string) => void
+}) {
+  const router = useRouter()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [state, setState] = useState<AuditEvidenceActionState>(
+    initialAuditEvidenceActionState
+  )
+  const [isUploading, setIsUploading] = useState(false)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const requirementText = photoRequirementText(
+    question.displayNumber,
+    question.scoringGroup
+  )
+
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+
+    if (!file || readOnly) {
+      return
+    }
+
+    const extension = evidenceFileExtension(file)
+
+    if (!extension) {
+      setState({
+        status: 'error',
+        message: 'Upload a JPEG, PNG, or WebP image.',
+      })
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setState({
+        status: 'error',
+        message: 'Photo evidence must be 5MB or smaller.',
+      })
+      return
+    }
+
+    const storedName = `${Date.now()}-${crypto.randomUUID()}-${safeFileName(
+      file.name,
+      extension
+    )}`
+    const filePath = `stores/${audit.storeId}/audits/${audit.id}/questions/${question.id}/${storedName}`
+
+    setIsUploading(true)
+    setState(initialAuditEvidenceActionState)
+
+    try {
+      const supabase = createBrowserClient()
+      const { error: uploadError } = await supabase.storage
+        .from('audit-evidence')
+        .upload(filePath, file, {
+          contentType: file.type,
+          upsert: false,
+        })
+
+      if (uploadError) {
+        setState({
+          status: 'error',
+          message: 'Could not upload photo evidence. Try again.',
+        })
+        return
+      }
+
+      const result = await registerAuditEvidenceAction({
+        auditId: audit.id,
+        questionId: question.id,
+        filePath,
+        fileName: file.name,
+        mimeType: file.type,
+        fileSizeBytes: file.size,
+      })
+
+      setState(result)
+
+      if (result.status === 'success' && result.evidence) {
+        onEvidenceAdded(question.id, result.evidence)
+        router.refresh()
+      } else {
+        await supabase.storage.from('audit-evidence').remove([filePath])
+      }
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  async function handleRemoveEvidence(evidence: AuditEvidence) {
+    if (readOnly) {
+      return
+    }
+
+    setRemovingId(evidence.id)
+    setState(initialAuditEvidenceActionState)
+
+    try {
+      const result = await deleteAuditEvidenceAction(evidence.id)
+      setState(result)
+
+      if (result.status === 'success') {
+        onEvidenceRemoved(question.id, evidence.id)
+        router.refresh()
+      }
+    } finally {
+      setRemovingId(null)
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-border bg-surface-soft p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+            <Camera aria-hidden="true" className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              Photo evidence
+            </p>
+            <p className="mt-1 text-xs font-medium leading-5 text-muted">
+              {requirementText ?? 'Optional supporting photos for this question.'}
+            </p>
+          </div>
+        </div>
+
+        {!readOnly ? (
+          <>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <button
+              type="button"
+              disabled={isUploading}
+              onClick={() => inputRef.current?.click()}
+              className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-xs font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted"
+            >
+              <Camera aria-hidden="true" className="size-4" />
+              {isUploading ? 'Uploading...' : 'Add photo'}
+            </button>
+          </>
+        ) : null}
+      </div>
+
+      {question.evidence.length > 0 ? (
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {question.evidence.map((evidence) => (
+            <figure
+              key={evidence.id}
+              className="overflow-hidden rounded-xl border border-border bg-white shadow-sm"
+            >
+              {evidence.signedUrl ? (
+                <Image
+                  src={evidence.signedUrl}
+                  alt={evidence.fileName ?? 'Audit evidence'}
+                  width={320}
+                  height={320}
+                  unoptimized
+                  className="aspect-square w-full object-cover"
+                />
+              ) : (
+                <div className="flex aspect-square w-full items-center justify-center bg-background text-muted">
+                  <ImageIcon aria-hidden="true" className="size-8" />
+                </div>
+              )}
+              <figcaption className="flex items-center justify-between gap-2 px-2 py-2">
+                <span className="min-w-0 truncate text-xs font-medium text-muted">
+                  {evidence.fileName ?? 'Photo evidence'}
+                </span>
+                {!readOnly ? (
+                  <button
+                    type="button"
+                    disabled={removingId === evidence.id}
+                    onClick={() => handleRemoveEvidence(evidence)}
+                    className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-danger/20 bg-danger-soft text-danger transition hover:border-danger focus:outline-none focus:ring-4 focus:ring-danger/15 disabled:cursor-not-allowed disabled:opacity-60"
+                    aria-label="Remove photo evidence"
+                  >
+                    <Trash2 aria-hidden="true" className="size-4" />
+                  </button>
+                ) : null}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-3 rounded-xl border border-dashed border-border bg-white px-3 py-3 text-sm font-medium text-muted">
+          No photo evidence added yet.
+        </div>
+      )}
+
+      <StatusMessage state={state} />
+    </section>
   )
 }
 
@@ -1098,14 +1358,20 @@ export function AuditChecklist({
 }: AuditChecklistProps) {
   const initialAnswers = useMemo(() => initialAnswerMap(sections), [sections])
   const initialQuestions = useMemo(
-    () => flattenQuestions(sections, initialAnswers),
+    () => flattenQuestions(sections, initialAnswers, {}),
     [sections, initialAnswers]
+  )
+  const initialEvidence = useMemo(
+    () => initialEvidenceMap(initialQuestions),
+    [initialQuestions]
   )
   const initialPosition = useMemo(
     () => getInitialWizardPosition(initialQuestions),
     [initialQuestions]
   )
   const [answers, setAnswers] = useState<LocalAnswerMap>(initialAnswers)
+  const [evidenceByQuestion, setEvidenceByQuestion] =
+    useState<EvidenceMap>(initialEvidence)
   const [drafts, setDrafts] = useState<DraftAnswerMap>(() =>
     initialDraftMap(initialQuestions)
   )
@@ -1119,8 +1385,8 @@ export function AuditChecklist({
     audit.status === 'completed' ||
     audit.status === 'archived'
   const questions = useMemo(
-    () => flattenQuestions(sections, answers),
-    [sections, answers]
+    () => flattenQuestions(sections, answers, evidenceByQuestion),
+    [sections, answers, evidenceByQuestion]
   )
   const boundedStepIndex =
     questions.length > 0
@@ -1191,6 +1457,22 @@ export function AuditChecklist({
     setDrafts((currentDrafts) => ({
       ...currentDrafts,
       [questionId]: draft,
+    }))
+  }
+
+  function handleEvidenceAdded(questionId: string, evidence: AuditEvidence) {
+    setEvidenceByQuestion((currentEvidence) => ({
+      ...currentEvidence,
+      [questionId]: [...(currentEvidence[questionId] ?? []), evidence],
+    }))
+  }
+
+  function handleEvidenceRemoved(questionId: string, evidenceId: string) {
+    setEvidenceByQuestion((currentEvidence) => ({
+      ...currentEvidence,
+      [questionId]: (currentEvidence[questionId] ?? []).filter(
+        (evidence) => evidence.id !== evidenceId
+      ),
     }))
   }
 
@@ -1504,6 +1786,14 @@ export function AuditChecklist({
                     onDraftChange={(draft) =>
                       updateDraft(currentQuestion.id, draft)
                     }
+                  />
+
+                  <PhotoEvidenceSection
+                    audit={audit}
+                    question={currentQuestion}
+                    readOnly={readOnly}
+                    onEvidenceAdded={handleEvidenceAdded}
+                    onEvidenceRemoved={handleEvidenceRemoved}
                   />
 
                   <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
