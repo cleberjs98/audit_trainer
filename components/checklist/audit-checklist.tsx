@@ -46,6 +46,7 @@ import {
   type CompleteAuditState,
   type AuditEvidenceActionState,
   type MissingAuditPersonRequirement,
+  type MissingRequiredPhotoRequirement,
   type SaveAuditPeopleState,
   type SaveAnswerState,
 } from '@/components/checklist/types'
@@ -64,7 +65,11 @@ import {
   findMissingCommentRequirements,
   type MissingCommentRequirement,
 } from '@/lib/audits/comment-requirements'
-import { photoRequirementText } from '@/lib/audits/photo-requirements'
+import {
+  findMissingRequiredPhotoRequirements,
+  isPhotoRequiredQuestion,
+  photoRequirementText,
+} from '@/lib/audits/photo-requirements'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/types/user'
 
@@ -558,6 +563,14 @@ function missingCommentButtonLabel(requirement: MissingCommentRequirement) {
   return 'Bonus'
 }
 
+function missingPhotoButtonLabel(requirement: MissingRequiredPhotoRequirement) {
+  if (requirement.displayNumber) {
+    return `Q${requirement.displayNumber}`
+  }
+
+  return 'Question'
+}
+
 function missingPeopleLabels(
   requirements: MissingAuditPersonRequirement[]
 ) {
@@ -763,6 +776,16 @@ function PhotoEvidenceSection({
     question.displayNumber,
     question.scoringGroup
   )
+  const isRequiredPhoto = isPhotoRequiredQuestion(
+    question.displayNumber,
+    question.scoringGroup
+  )
+  const hasPhotoEvidence = question.evidence.length > 0
+  const requirementStateText = isRequiredPhoto
+    ? hasPhotoEvidence
+      ? 'Photo evidence added.'
+      : 'Required before completion.'
+    : null
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0]
@@ -873,6 +896,15 @@ function PhotoEvidenceSection({
             <p className="mt-1 text-xs font-medium leading-5 text-muted">
               {requirementText ?? 'Optional supporting photos for this question.'}
             </p>
+            {requirementStateText ? (
+              <p
+                className={`mt-1 text-xs font-semibold ${
+                  hasPhotoEvidence ? 'text-success' : 'text-warning'
+                }`}
+              >
+                {requirementStateText}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -957,6 +989,7 @@ function ReviewCompleteCard({
   requiredCoreCount,
   missingRequiredCoreQuestions,
   missingCommentRequirements,
+  missingRequiredPhotoRequirements,
   auditPeople,
   preview,
   onQuestionSelect,
@@ -968,6 +1001,7 @@ function ReviewCompleteCard({
   requiredCoreCount: number
   missingRequiredCoreQuestions: ChecklistQuestion[]
   missingCommentRequirements: MissingCommentRequirement[]
+  missingRequiredPhotoRequirements: MissingRequiredPhotoRequirement[]
   auditPeople: AuditPeopleValues
   preview: ScorePreview
   onQuestionSelect: (index: number) => void
@@ -1004,11 +1038,17 @@ function ReviewCompleteCard({
       ? missingCommentRequirements
       : state.missingCommentRequirements ?? []
   const hasMissingComments = visibleMissingCommentRequirements.length > 0
+  const visibleMissingRequiredPhotos =
+    missingRequiredPhotoRequirements.length > 0
+      ? missingRequiredPhotoRequirements
+      : state.missingRequiredPhotos ?? []
+  const hasMissingPhotos = visibleMissingRequiredPhotos.length > 0
   const shouldShowCompletionState =
     !isRequiredCompletionMessage(state.message) ||
     hasMissingRequired ||
     hasMissingPeople ||
-    hasMissingComments
+    hasMissingComments ||
+    hasMissingPhotos
 
   function updatePeopleValue(key: keyof AuditPeopleValues, value: string) {
     setPeopleValues((currentValues) => ({
@@ -1062,6 +1102,15 @@ function ReviewCompleteCard({
         status: 'error',
         message: 'Please add the required comments before completing the audit.',
         missingCommentRequirements: visibleMissingCommentRequirements,
+      })
+      return
+    }
+
+    if (hasMissingPhotos) {
+      setState({
+        status: 'error',
+        message: 'Please add required photos before completing the audit.',
+        missingRequiredPhotos: visibleMissingRequiredPhotos,
       })
       return
     }
@@ -1131,6 +1180,12 @@ function ReviewCompleteCard({
             </p>
             <p className="mt-1 text-lg font-semibold text-foreground">
               {visibleMissingCommentRequirements.length}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-background p-3">
+            <p className="text-xs font-semibold text-muted">Missing photos</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">
+              {visibleMissingRequiredPhotos.length}
             </p>
           </div>
           <div className="rounded-xl border border-border bg-background p-3">
@@ -1279,6 +1334,39 @@ function ReviewCompleteCard({
           </div>
         ) : null}
 
+        {visibleMissingRequiredPhotos.length > 0 ? (
+          <div className="rounded-xl border border-warning/20 bg-warning-soft p-3 text-warning">
+            <p className="text-sm font-semibold">
+              Required photos missing:
+            </p>
+            <div className="mt-3 grid gap-2">
+              {visibleMissingRequiredPhotos.map((requirement) => {
+                const questionIndex = questions.findIndex(
+                  (item) => item.id === requirement.questionId
+                )
+
+                return (
+                  <button
+                    key={requirement.questionId}
+                    type="button"
+                    onClick={() => {
+                      onQuestionSelect(questionIndex)
+                    }}
+                    className="rounded-lg border border-warning/30 bg-white px-3 py-2 text-left text-sm font-semibold text-warning"
+                  >
+                    <span className="block">
+                      {missingPhotoButtonLabel(requirement)} - Photo evidence required
+                    </span>
+                    <span className="mt-1 block text-xs font-medium leading-5">
+                      {requirement.questionText}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+
         {audit.completedAt ? (
           <div className="rounded-xl border border-border bg-background p-3">
             <p className="text-xs font-semibold text-muted">Completed</p>
@@ -1294,10 +1382,11 @@ function ReviewCompleteCard({
           {hasMissingRequired ||
           hasMissingPeople ||
           hasMissingComments ||
+          hasMissingPhotos ||
           hasUnsavedPeopleChanges ? (
             <div className="rounded-lg border border-warning/20 bg-warning-soft px-3 py-3 text-sm font-medium leading-6 text-warning">
-              Completion is locked until every required answer, comment, and
-              people field is complete.
+              Completion is locked until every required answer, comment, photo,
+              and people field is complete.
             </div>
           ) : (
             <>
@@ -1329,6 +1418,7 @@ function ReviewCompleteCard({
               hasMissingRequired ||
               hasMissingPeople ||
               hasMissingComments ||
+              hasMissingPhotos ||
               hasUnsavedPeopleChanges ||
               isCompleting
             }
@@ -1405,6 +1495,16 @@ export function AuditChecklist({
     (question) => !hasValidRequiredCoreAnswer(question)
   )
   const missingCommentRequirements = findMissingCommentRequirements(questions)
+  const missingRequiredPhotoRequirements =
+    findMissingRequiredPhotoRequirements(
+      questions.map((question) => ({
+        id: question.id,
+        questionText: question.questionText,
+        displayNumber: question.displayNumber,
+        scoringGroup: question.scoringGroup,
+        evidenceCount: question.evidence.length,
+      }))
+    )
   const answeredCoreCount =
     requiredCoreQuestions.length - missingRequiredCoreQuestions.length
   const progressValue =
@@ -1707,6 +1807,7 @@ export function AuditChecklist({
               requiredCoreCount={requiredCoreQuestions.length}
               missingRequiredCoreQuestions={missingRequiredCoreQuestions}
               missingCommentRequirements={missingCommentRequirements}
+              missingRequiredPhotoRequirements={missingRequiredPhotoRequirements}
               auditPeople={auditPeople}
               preview={preview}
               onQuestionSelect={handleJumpToStep}

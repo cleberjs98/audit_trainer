@@ -138,11 +138,18 @@ export type MissingCommentRequirement = {
   reason: 'low_score' | 'critical_issue' | 'bonus_awarded'
 }
 
+export type MissingRequiredPhotoRequirement = {
+  questionId: string
+  displayNumber: number | null
+  questionText: string
+}
+
 export type CompleteAuditState = {
   status: 'idle' | 'success' | 'error'
   message: string
   missingCommentRequirements?: MissingCommentRequirement[]
   missingPeopleFields?: MissingAuditPersonRequirement[]
+  missingRequiredPhotos?: MissingRequiredPhotoRequirement[]
 }
 
 export type SaveAuditPeopleState = {

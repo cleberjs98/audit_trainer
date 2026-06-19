@@ -7,6 +7,7 @@ import type {
   AuditEvidenceActionState,
   AuditPeopleValues,
   CompleteAuditState,
+  MissingRequiredPhotoRequirement,
   MissingAuditPersonRequirement,
   SaveAuditPeopleState,
   SaveAnswerState,
@@ -19,6 +20,7 @@ import {
   findMissingCommentRequirements,
   type MissingCommentRequirement,
 } from '@/lib/audits/comment-requirements'
+import { findMissingRequiredPhotoRequirements } from '@/lib/audits/photo-requirements'
 import { isUserRole, type ProfileRow } from '@/lib/auth/profile'
 import { createClient } from '@/lib/supabase/server'
 
@@ -76,6 +78,10 @@ type CompletionAnswerRow = {
   score: number | string | null
   comment: string | null
   is_critical_flag: boolean
+}
+
+type CompletionEvidenceRow = {
+  question_id: string | null
 }
 
 type AuditPersonRow = {
@@ -527,6 +533,81 @@ async function loadMissingAuditPeople(
   return {
     ok: true,
     missing: findMissingAuditPeople(toAuditPeopleValues(data ?? [])),
+  }
+}
+
+async function loadMissingRequiredPhotoRequirements(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  auditId: string
+): Promise<{
+  ok: true
+  missing: MissingRequiredPhotoRequirement[]
+} | {
+  ok: false
+  message: string
+}> {
+  const [
+    { data: questionRows, error: questionError },
+    { data: evidenceRows, error: evidenceError },
+  ] = await Promise.all([
+    supabase
+      .from('audit_questions')
+      .select('id, question_text, scoring_group, display_number')
+      .eq('is_active', true)
+      .eq('scoring_model_version', 'pret_ce_v1')
+      .eq('scoring_group', 'core')
+      .returns<
+        Array<{
+          id: string
+          question_text: string
+          scoring_group: 'core'
+          display_number: number | null
+        }>
+      >(),
+    supabase
+      .from('audit_evidence')
+      .select('question_id')
+      .eq('audit_id', auditId)
+      .eq('evidence_type', 'photo')
+      .returns<CompletionEvidenceRow[]>(),
+  ])
+
+  if (questionError || evidenceError) {
+    console.error('[audit_evidence] Could not validate required photos', {
+      questionError: questionError ? safeSupabaseErrorSummary(questionError) : null,
+      evidenceError: evidenceError ? safeSupabaseErrorSummary(evidenceError) : null,
+    })
+
+    return {
+      ok: false,
+      message: 'Could not validate required photos. Review the checklist and try again.',
+    }
+  }
+
+  const evidenceCountByQuestionId = new Map<string, number>()
+
+  for (const evidence of evidenceRows ?? []) {
+    if (!evidence.question_id) {
+      continue
+    }
+
+    evidenceCountByQuestionId.set(
+      evidence.question_id,
+      (evidenceCountByQuestionId.get(evidence.question_id) ?? 0) + 1
+    )
+  }
+
+  return {
+    ok: true,
+    missing: findMissingRequiredPhotoRequirements(
+      (questionRows ?? []).map((question) => ({
+        id: question.id,
+        questionText: question.question_text,
+        displayNumber: question.display_number,
+        scoringGroup: question.scoring_group,
+        evidenceCount: evidenceCountByQuestionId.get(question.id) ?? 0,
+      }))
+    ),
   }
 }
 
@@ -1089,23 +1170,35 @@ export async function completeAuditAction(
     }
   }
 
-  if (commentValidation.missing.length > 0) {
+  const photoValidation = await loadMissingRequiredPhotoRequirements(
+    access.supabase,
+    audit.id
+  )
+
+  if (!photoValidation.ok) {
     return {
       status: 'error',
-      message:
-        peopleValidation.missing.length > 0
-          ? 'Please complete people on duty and required comments before completing the audit.'
-          : 'Please add the required comments before completing the audit.',
-      missingCommentRequirements: commentValidation.missing,
-      missingPeopleFields: peopleValidation.missing,
+      message: photoValidation.message,
     }
   }
 
-  if (peopleValidation.missing.length > 0) {
+  const hasMissingPeople = peopleValidation.missing.length > 0
+  const hasMissingComments = commentValidation.missing.length > 0
+  const hasMissingPhotos = photoValidation.missing.length > 0
+
+  if (hasMissingPeople || hasMissingComments || hasMissingPhotos) {
+    const missingParts = [
+      hasMissingPeople ? 'people on duty' : null,
+      hasMissingComments ? 'required comments' : null,
+      hasMissingPhotos ? 'required photos' : null,
+    ].filter(Boolean)
+
     return {
       status: 'error',
-      message: 'Please complete people on duty before completing the audit.',
+      message: `Please complete ${missingParts.join(', ')} before completing the audit.`,
+      missingCommentRequirements: commentValidation.missing,
       missingPeopleFields: peopleValidation.missing,
+      missingRequiredPhotos: photoValidation.missing,
     }
   }
 
