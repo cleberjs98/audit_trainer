@@ -15,6 +15,7 @@ import {
   ArrowRight,
   Camera,
   ClipboardCheck,
+  Download,
   Gauge,
   Image as ImageIcon,
   Star,
@@ -1369,10 +1370,21 @@ function ReviewCompleteCard({
 
         {audit.completedAt ? (
           <div className="rounded-xl border border-border bg-background p-3">
-            <p className="text-xs font-semibold text-muted">Completed</p>
-            <p className="mt-1 text-sm font-semibold text-foreground">
-              {formatDateTime(audit.completedAt)}
-            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold text-muted">Completed</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">
+                  {formatDateTime(audit.completedAt)}
+                </p>
+              </div>
+              <Link
+                href={`/audits/${audit.id}/report`}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/20"
+              >
+                <Download aria-hidden="true" className="size-4" />
+                Download PDF Report
+              </Link>
+            </div>
           </div>
         ) : null}
       </div>
