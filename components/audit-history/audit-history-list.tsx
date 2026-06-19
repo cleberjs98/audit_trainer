@@ -20,6 +20,7 @@ import {
   MobileAppHeader,
   MobileBottomNav,
 } from '@/components/navigation/mobile-app-shell'
+import { AuditHistoryDeleteAction } from '@/components/audit-history/audit-history-delete-action'
 import type { AuditScoreBand, AuditStatus } from '@/types/audit'
 import type { UserRole } from '@/types/user'
 
@@ -42,6 +43,7 @@ export type AuditHistoryItem = {
   scoringModelVersion: string
   createdAt: string
   completedAt: string | null
+  canDelete: boolean
 }
 
 type AuditHistoryListProps = {
@@ -556,13 +558,19 @@ export function AuditHistoryList({
                     </div>
                   </div>
 
-                  <Link
-                    href={`/audits/${audit.id}`}
-                    className="app-primary-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-white transition focus:outline-none focus:ring-4 focus:ring-primary/20"
-                  >
-                    Open audit
-                    <ArrowRight aria-hidden="true" className="size-4" />
-                  </Link>
+                  <div className="flex flex-col gap-2">
+                    <Link
+                      href={`/audits/${audit.id}`}
+                      className="app-primary-action inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-white transition focus:outline-none focus:ring-4 focus:ring-primary/20"
+                    >
+                      Open audit
+                      <ArrowRight aria-hidden="true" className="size-4" />
+                    </Link>
+
+                    {audit.canDelete ? (
+                      <AuditHistoryDeleteAction auditId={audit.id} />
+                    ) : null}
+                  </div>
                 </div>
               </article>
             ))}
