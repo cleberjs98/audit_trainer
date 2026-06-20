@@ -1495,13 +1495,15 @@ function ReviewCompleteCard({
                   {formatDateTime(audit.completedAt)}
                 </p>
               </div>
-              <Link
+              <a
                 href={`/audits/${audit.id}/report`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/20"
               >
                 <Download aria-hidden="true" className="size-4" />
                 Download PDF Report
-              </Link>
+              </a>
             </div>
           </div>
         ) : null}
