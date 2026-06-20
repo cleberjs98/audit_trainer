@@ -72,15 +72,19 @@ type ImageEvidence = EvidenceRow & {
 
 type PdfDocument = InstanceType<typeof PDFDocument>
 
-const PAGE_MARGIN = 42
-const FOOTER_RESERVED = 58
-const CONTENT_WIDTH = 511
-const GRAPHITE = '#171A1F'
+const PAGE_MARGIN = 36
+const FOOTER_RESERVED = 34
+const CONTENT_WIDTH = 523
+const TEXT = '#171A1F'
+const GRAPHITE = '#334155'
+const GRAPHITE_DARK = '#2F3744'
 const MUTED = '#667085'
 const BORDER = '#D9DEE7'
+const BACKGROUND = '#F4F6F8'
 const SURFACE = '#FFFFFF'
 const SURFACE_SOFT = '#F8FAFC'
 const PRIMARY = '#D11F3A'
+const PRIMARY_DARK = '#A9152D'
 const PRIMARY_SOFT = '#FDE8EC'
 const SUCCESS = '#12B76A'
 const SUCCESS_SOFT = '#ECFDF3'
@@ -127,21 +131,17 @@ function formatDate(value: string | null) {
   }).format(new Date(value))
 }
 
-function scoreLabel(audit: AuditRow) {
-  const bonusScore = toNumber(audit.section_scores?.bonus?.total_score)
-  const bonusMaxScore = toNumber(audit.section_scores?.bonus?.max_score) || 5
-
-  return `${toNumber(audit.total_score)}/${toNumber(audit.max_score)} + ${bonusScore}/${bonusMaxScore} bonus`
+function coreScoreLabel(audit: AuditRow) {
+  return `${toNumber(audit.total_score)}/${toNumber(audit.max_score)}`
 }
 
-function bonusLabel(audit: AuditRow, bonusAnswer: AnswerRow | undefined) {
+function outstandingCardStatus(audit: AuditRow, bonusAnswer?: AnswerRow) {
   const bonusScore =
     bonusAnswer?.score === null || bonusAnswer?.score === undefined
       ? toNumber(audit.section_scores?.bonus?.total_score)
       : toNumber(bonusAnswer.score)
-  const bonusMaxScore = toNumber(audit.section_scores?.bonus?.max_score) || 5
 
-  return `${bonusScore}/${bonusMaxScore} bonus`
+  return bonusScore >= 5 ? 'Achieved' : 'Not achieved'
 }
 
 function scoreBandLabel(scoreBand: AuditRow['score_band']) {
@@ -277,21 +277,26 @@ async function canAccessAudit(
 }
 
 function addHeader(doc: PdfDocument, title: string) {
+  doc.rect(0, 0, doc.page.width, doc.page.height).fill(BACKGROUND)
+  doc.rect(0, 0, doc.page.width, 7).fill(GRAPHITE_DARK)
+  doc.roundedRect(PAGE_MARGIN, 22, CONTENT_WIDTH, 36, 10).fill(GRAPHITE)
+  doc.roundedRect(PAGE_MARGIN, 22, 6, 36, 3).fill(PRIMARY)
   doc
+    .font('Helvetica-Bold')
     .fontSize(9)
-    .fillColor(MUTED)
-    .text('Audit Trainer', PAGE_MARGIN, 24, { continued: true })
-    .fillColor(PRIMARY)
-    .text(`  ${title}`, { lineBreak: false })
-
+    .fillColor('#D9DEE7')
+    .text('Audit Trainer', PAGE_MARGIN + 18, 34, { width: 120 })
   doc
-    .moveTo(PAGE_MARGIN, 40)
-    .lineTo(PAGE_MARGIN + CONTENT_WIDTH, 40)
-    .lineWidth(0.6)
-    .strokeColor(BORDER)
-    .stroke()
+    .font('Helvetica')
+    .fontSize(8.5)
+    .fillColor(SURFACE)
+    .text(title, PAGE_MARGIN + 144, 34, {
+      width: CONTENT_WIDTH - 162,
+      align: 'right',
+      lineBreak: false,
+    })
 
-  doc.y = 58
+  doc.y = 74
 }
 
 function usablePageBottom(doc: PdfDocument) {
@@ -309,15 +314,19 @@ function ensureSpace(doc: PdfDocument, neededHeight: number, title: string) {
 
 function sectionTitle(doc: PdfDocument, value: string, title: string) {
   ensureSpace(doc, 36, title)
-  doc.moveDown(0.35)
-  doc.fontSize(14).fillColor(GRAPHITE).text(value, PAGE_MARGIN, doc.y)
+  doc.moveDown(0.25)
+  const y = doc.y
+  doc.roundedRect(PAGE_MARGIN, y, CONTENT_WIDTH, 24, 8).fill(SURFACE)
+  doc.roundedRect(PAGE_MARGIN, y, 5, 24, 2).fill(PRIMARY)
   doc
-    .moveTo(PAGE_MARGIN, doc.y + 4)
-    .lineTo(PAGE_MARGIN + CONTENT_WIDTH, doc.y + 4)
-    .lineWidth(0.5)
-    .strokeColor(BORDER)
-    .stroke()
-  doc.moveDown(0.7)
+    .font('Helvetica-Bold')
+    .fontSize(12)
+    .fillColor(TEXT)
+    .text(value, PAGE_MARGIN + 14, y + 7, {
+      width: CONTENT_WIDTH - 28,
+      lineBreak: false,
+    })
+  doc.y = y + 34
 }
 
 function drawBadge(
@@ -331,7 +340,7 @@ function drawBadge(
   const width = Math.max(54, doc.fontSize(8).widthOfString(label) + 16)
 
   doc.roundedRect(x, y, width, 18, 9).fillAndStroke(fill, fill)
-  doc.fontSize(8).fillColor(color).text(label, x + 8, y + 5, {
+  doc.font('Helvetica-Bold').fontSize(8).fillColor(color).text(label, x + 8, y + 5, {
     width: width - 16,
     align: 'center',
     lineBreak: false,
@@ -359,18 +368,19 @@ function drawMetricCard(
           : SURFACE_SOFT
   const valueColor =
     tone === 'primary'
-      ? PRIMARY
+      ? PRIMARY_DARK
       : tone === 'success'
         ? SUCCESS
         : tone === 'warning'
           ? WARNING
-          : GRAPHITE
+          : TEXT
 
-  doc.roundedRect(x, y, width, 52, 10).fillAndStroke(fill, BORDER)
-  doc.fontSize(8).fillColor(MUTED).text(label, x + 10, y + 10, {
+  doc.roundedRect(x, y, width, 56, 9).fillAndStroke(fill, BORDER)
+  doc.font('Helvetica-Bold').fontSize(7.8).fillColor(MUTED).text(label, x + 10, y + 10, {
     width: width - 20,
+    lineBreak: false,
   })
-  doc.fontSize(14).fillColor(valueColor).text(value, x + 10, y + 27, {
+  doc.font('Helvetica-Bold').fontSize(13).fillColor(valueColor).text(value, x + 10, y + 29, {
     width: width - 20,
     lineBreak: false,
   })
@@ -415,26 +425,61 @@ function drawHero(
   addHeader(doc, title)
 
   const y = doc.y
+  const outstandingStatus = outstandingCardStatus(audit)
 
-  doc.roundedRect(PAGE_MARGIN, y, CONTENT_WIDTH, 136, 16).fillAndStroke(GRAPHITE, GRAPHITE)
-  doc.fontSize(11).fillColor(PRIMARY_SOFT).text('Audit Trainer', PAGE_MARGIN + 18, y + 18)
-  doc.fontSize(26).fillColor('#FFFFFF').text(store.name, PAGE_MARGIN + 18, y + 38, {
-    width: 320,
+  doc.roundedRect(PAGE_MARGIN, y, CONTENT_WIDTH, 150, 16).fillAndStroke(GRAPHITE, GRAPHITE)
+  doc.roundedRect(PAGE_MARGIN, y, 8, 150, 4).fill(PRIMARY)
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(10)
+    .fillColor('#D9DEE7')
+    .text('Audit Trainer', PAGE_MARGIN + 22, y + 18)
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(21)
+    .fillColor(SURFACE)
+    .text('Completed Audit Report', PAGE_MARGIN + 22, y + 39, {
+      width: 300,
+      lineBreak: false,
+    })
+  doc.font('Helvetica-Bold').fontSize(13).fillColor(SURFACE).text(store.name, PAGE_MARGIN + 22, y + 72, {
+    width: 300,
   })
-  doc.fontSize(10).fillColor('#D9DEE7').text(`Store ${store.code}`, PAGE_MARGIN + 18, y + 72)
-  doc.fontSize(10).fillColor('#D9DEE7').text(`Auditor: ${auditorName}`, PAGE_MARGIN + 18, y + 90)
-  doc.fontSize(10).fillColor('#D9DEE7').text(`Completed: ${formatDateTime(audit.completed_at)}`, PAGE_MARGIN + 18, y + 108)
+  doc
+    .font('Helvetica')
+    .fontSize(9)
+    .fillColor('#E2E8F0')
+    .text(`Store ${store.code} | Visit ${formatDate(audit.visit_date)}`, PAGE_MARGIN + 22, y + 94, {
+      width: 300,
+      lineBreak: false,
+    })
+  doc.fontSize(9).text(`Auditor: ${auditorName}`, PAGE_MARGIN + 22, y + 112, {
+    width: 300,
+    lineBreak: false,
+  })
+  doc.fontSize(9).text(`Completed: ${formatDateTime(audit.completed_at)}`, PAGE_MARGIN + 22, y + 130, {
+    width: 300,
+    lineBreak: false,
+  })
 
-  doc.roundedRect(PAGE_MARGIN + 344, y + 20, 142, 96, 14).fillAndStroke('#FFFFFF', '#FFFFFF')
-  doc.fontSize(8).fillColor(MUTED).text('Final score', PAGE_MARGIN + 360, y + 36)
-  doc.fontSize(20).fillColor(PRIMARY).text(scoreLabel(audit), PAGE_MARGIN + 360, y + 52, {
-    width: 110,
+  doc.roundedRect(PAGE_MARGIN + 338, y + 18, 164, 114, 14).fillAndStroke(SURFACE, SURFACE)
+  doc.font('Helvetica-Bold').fontSize(8).fillColor(MUTED).text('Official score', PAGE_MARGIN + 356, y + 34)
+  doc.font('Helvetica-Bold').fontSize(22).fillColor(PRIMARY_DARK).text(coreScoreLabel(audit), PAGE_MARGIN + 356, y + 48, {
+    width: 128,
+    lineBreak: false,
   })
-  doc.fontSize(8).fillColor(MUTED).text(`${scoreBandLabel(audit.score_band)} - ${Math.round(toNumber(audit.percentage))}% core`, PAGE_MARGIN + 360, y + 86, {
-    width: 110,
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor(TEXT).text(`${scoreBandLabel(audit.score_band)} | ${Math.round(toNumber(audit.percentage))}% core`, PAGE_MARGIN + 356, y + 76, {
+    width: 128,
+    lineBreak: false,
+  })
+  doc.roundedRect(PAGE_MARGIN + 356, y + 94, 128, 22, 7).fill(PRIMARY_SOFT)
+  doc.font('Helvetica-Bold').fontSize(7.8).fillColor(PRIMARY_DARK).text(`Outstanding Card: ${outstandingStatus}`, PAGE_MARGIN + 364, y + 101, {
+    width: 112,
+    align: 'center',
+    lineBreak: false,
   })
 
-  doc.y = y + 154
+  doc.y = y + 166
 }
 
 function commentAnalytics(questions: QuestionRow[], answersByQuestion: Map<string, AnswerRow>) {
@@ -510,7 +555,7 @@ function drawSummary(
 
   drawMetricCard(doc, PAGE_MARGIN, startY, cardWidth, 'Core score', `${toNumber(audit.total_score)}/${toNumber(audit.max_score)}`, 'primary')
   drawMetricCard(doc, PAGE_MARGIN + cardWidth + 12, startY, cardWidth, 'Core percentage', `${Math.round(toNumber(audit.percentage))}%`, 'success')
-  drawMetricCard(doc, PAGE_MARGIN + (cardWidth + 12) * 2, startY, cardWidth, 'Outstanding bonus', `${toNumber(audit.section_scores?.bonus?.total_score)}/${toNumber(audit.section_scores?.bonus?.max_score) || 5}`, 'default')
+  drawMetricCard(doc, PAGE_MARGIN + (cardWidth + 12) * 2, startY, cardWidth, 'Outstanding Card', outstandingCardStatus(audit), 'default')
   drawMetricCard(doc, PAGE_MARGIN, startY + 64, cardWidth, 'Attention scores', String(belowFive), belowFive > 0 ? 'warning' : 'success')
   drawMetricCard(doc, PAGE_MARGIN + cardWidth + 12, startY + 64, cardWidth, 'Critical issues', String(criticalIssues), criticalIssues > 0 ? 'warning' : 'success')
   drawMetricCard(doc, PAGE_MARGIN + (cardWidth + 12) * 2, startY + 64, cardWidth, 'Photos', String(photoCount), 'default')
@@ -534,12 +579,27 @@ function drawSummary(
   )
 }
 
+function findingSummary(
+  count: number,
+  noun: string,
+  examples: string[],
+  empty: string
+) {
+  if (count === 0) {
+    return empty
+  }
+
+  const exampleText = examples.length > 0 ? ` Key examples: ${examples.join(', ')}.` : ''
+
+  return `${count} ${noun}.${exampleText}`
+}
+
 function listText(items: string[], empty: string) {
   if (items.length === 0) {
     return empty
   }
 
-  return items.slice(0, 8).join(', ') + (items.length > 8 ? `, +${items.length - 8} more` : '')
+  return items.slice(0, 4).join(', ') + (items.length > 4 ? `, +${items.length - 4} more` : '')
 }
 
 function drawTextBlock(
@@ -558,11 +618,11 @@ function drawTextBlock(
 
   const y = doc.y
   const fill = tone === 'danger' ? DANGER_SOFT : tone === 'warning' ? WARNING_SOFT : SURFACE_SOFT
-  const color = tone === 'danger' ? DANGER : tone === 'warning' ? WARNING : GRAPHITE
+  const color = tone === 'danger' ? DANGER : tone === 'warning' ? WARNING : TEXT
 
   doc.roundedRect(PAGE_MARGIN, y, CONTENT_WIDTH, height, 10).fillAndStroke(fill, BORDER)
-  doc.fontSize(9).fillColor(color).text(label, PAGE_MARGIN + 12, y + 10)
-  doc.fontSize(9).fillColor(GRAPHITE).text(value, PAGE_MARGIN + 12, y + 26, {
+  doc.font('Helvetica-Bold').fontSize(9).fillColor(color).text(label, PAGE_MARGIN + 12, y + 10)
+  doc.font('Helvetica').fontSize(9).fillColor(TEXT).text(value, PAGE_MARGIN + 12, y + 26, {
     width: CONTENT_WIDTH - 24,
   })
   doc.y = y + height + 8
@@ -577,7 +637,7 @@ function drawKeyFindings(
 ) {
   const strengths = coreQuestions
     .filter((question) => answerScore(answersByQuestion.get(question.id)) === toNumber(question.max_score))
-    .map((question) => questionLabel(question))
+    .map((question) => `${questionLabel(question)} - 5/5`)
   const attention = coreQuestions
     .filter((question) => {
       const score = answerScore(answersByQuestion.get(question.id))
@@ -604,9 +664,38 @@ function drawKeyFindings(
       : `${visualWithPhotos}/${requiredVisualQuestions.length} required visual questions have photo evidence.`
 
   sectionTitle(doc, 'Key findings', title)
-  drawTextBlock(doc, 'Strengths', listText(strengths, 'No 5/5 core questions recorded.'), title)
-  drawTextBlock(doc, 'Attention needed', listText(attention, 'No below-5 core scores recorded.'), title, attention.length > 0 ? 'warning' : 'default')
-  drawTextBlock(doc, 'Critical issues', listText(critical, 'No critical issues recorded.'), title, critical.length > 0 ? 'danger' : 'default')
+  drawTextBlock(
+    doc,
+    'Strengths',
+    findingSummary(
+      strengths.length,
+      strengths.length === 1 ? 'question scored 5/5' : 'questions scored 5/5',
+      strengths.slice(0, 3),
+      'No 5/5 core questions recorded.'
+    ),
+    title
+  )
+  drawTextBlock(
+    doc,
+    'Attention needed',
+    findingSummary(
+      attention.length,
+      attention.length === 1 ? 'question needs attention' : 'questions need attention',
+      attention.slice(0, 3),
+      'No below-5 core scores recorded.'
+    ),
+    title,
+    attention.length > 0 ? 'warning' : 'default'
+  )
+  drawTextBlock(
+    doc,
+    'Critical issues',
+    critical.length > 0
+      ? `${critical.length} critical ${critical.length === 1 ? 'issue' : 'issues'} recorded. ${listText(critical, '')}`
+      : 'No critical issues recorded.',
+    title,
+    critical.length > 0 ? 'danger' : 'default'
+  )
   drawTextBlock(doc, 'Photo coverage', photoCoverage, title, totalPhotos === 0 ? 'warning' : 'default')
 }
 
@@ -630,30 +719,32 @@ function drawQuestionRow(
     score === null ? 'Not answered' : `${score}/${toNumber(question.max_score)}`
   const status = questionStatus(question, answer)
   const comment = commentLine(question, answer)
-  const questionWidth = CONTENT_WIDTH - 118
+  const questionWidth = CONTENT_WIDTH - 124
   const questionHeight = doc
-    .fontSize(9)
+    .font('Helvetica')
+    .fontSize(8.7)
     .heightOfString(question.question_text, { width: questionWidth })
   const commentHeight = comment
-    ? doc.fontSize(8).heightOfString(comment, { width: questionWidth })
+    ? doc.font('Helvetica').fontSize(8).heightOfString(comment, { width: questionWidth })
     : 0
-  const rowHeight = Math.max(58, 30 + questionHeight + (comment ? commentHeight + 12 : 0))
+  const rowHeight = Math.max(70, 36 + questionHeight + (comment ? commentHeight + 18 : 0))
 
   ensureSpace(doc, rowHeight + 8, title)
 
   const y = doc.y
 
   doc.roundedRect(PAGE_MARGIN, y, CONTENT_WIDTH, rowHeight, 9).fillAndStroke(SURFACE, BORDER)
-  doc.fontSize(10).fillColor(PRIMARY).text(questionLabel(question), PAGE_MARGIN + 10, y + 10, {
-    width: 42,
-    lineBreak: false,
-  })
-  doc.fontSize(10).fillColor(GRAPHITE).text(scoreText, PAGE_MARGIN + 60, y + 10, {
+  doc.roundedRect(PAGE_MARGIN, y, 74, rowHeight, 9).fill(SURFACE_SOFT)
+  doc.font('Helvetica-Bold').fontSize(10).fillColor(PRIMARY_DARK).text(questionLabel(question), PAGE_MARGIN + 12, y + 12, {
     width: 50,
     lineBreak: false,
   })
-  drawBadge(doc, status.label, PAGE_MARGIN + CONTENT_WIDTH - 86, y + 8, status.fill, status.color)
-  doc.fontSize(9).fillColor(GRAPHITE).text(question.question_text, PAGE_MARGIN + 116, y + 10, {
+  doc.font('Helvetica-Bold').fontSize(10).fillColor(TEXT).text(scoreText, PAGE_MARGIN + 12, y + 30, {
+    width: 56,
+    lineBreak: false,
+  })
+  drawBadge(doc, status.label, PAGE_MARGIN + 10, y + 49, status.fill, status.color)
+  doc.font('Helvetica').fontSize(8.7).fillColor(TEXT).text(question.question_text, PAGE_MARGIN + 90, y + 12, {
     width: questionWidth,
   })
 
@@ -661,24 +752,101 @@ function drawQuestionRow(
     const isMissing = comment === 'Required comment missing'
 
     doc
+      .font(isMissing ? 'Helvetica-Bold' : 'Helvetica')
       .fontSize(8)
       .fillColor(isMissing ? DANGER : MUTED)
-      .text(comment, PAGE_MARGIN + 116, doc.y + 5, {
+      .text(comment, PAGE_MARGIN + 90, doc.y + 7, {
         width: questionWidth,
       })
   }
 
   if (question.scoring_group === 'core') {
     doc
+      .font('Helvetica')
       .fontSize(8)
       .fillColor(MUTED)
-      .text(`Photos: ${photoCount}`, PAGE_MARGIN + 10, y + rowHeight - 18, {
-        width: 84,
+      .text(`Photos: ${photoCount}`, PAGE_MARGIN + CONTENT_WIDTH - 78, y + rowHeight - 18, {
+        width: 66,
+        align: 'right',
         lineBreak: false,
       })
   }
 
   doc.y = y + rowHeight + 8
+}
+
+function drawOutstandingCardSection(
+  doc: PdfDocument,
+  title: string,
+  bonusQuestion: QuestionRow,
+  answer: AnswerRow | undefined,
+  audit: AuditRow
+) {
+  sectionTitle(doc, 'Outstanding Card', title)
+
+  const status = questionStatus(bonusQuestion, answer)
+  const comment = commentLine(bonusQuestion, answer)
+  const questionWidth = CONTENT_WIDTH - 34
+  const questionHeight = doc
+    .font('Helvetica')
+    .fontSize(9)
+    .heightOfString(bonusQuestion.question_text, { width: questionWidth })
+  const commentHeight = comment
+    ? doc.font('Helvetica').fontSize(8.2).heightOfString(comment, { width: questionWidth })
+    : 0
+  const cardHeight = Math.max(112, 76 + questionHeight + (comment ? commentHeight + 18 : 0))
+
+  ensureSpace(doc, cardHeight + 8, title)
+
+  const y = doc.y
+  const result = outstandingCardStatus(audit, answer)
+  const achieved = result === 'Achieved'
+
+  doc.roundedRect(PAGE_MARGIN, y, CONTENT_WIDTH, cardHeight, 12).fillAndStroke(CREAM, BORDER)
+  doc.roundedRect(PAGE_MARGIN, y, 7, cardHeight, 3).fill(PRIMARY)
+  doc.font('Helvetica-Bold').fontSize(12).fillColor(TEXT).text('Outstanding Card', PAGE_MARGIN + 18, y + 16, {
+    width: 230,
+    lineBreak: false,
+  })
+  doc.font('Helvetica-Bold').fontSize(12).fillColor(PRIMARY_DARK).text(result, PAGE_MARGIN + 310, y + 16, {
+    width: 94,
+    align: 'right',
+    lineBreak: false,
+  })
+  drawBadge(
+    doc,
+    achieved ? 'Achieved' : 'Not achieved',
+    PAGE_MARGIN + CONTENT_WIDTH - 104,
+    y + 12,
+    status.fill,
+    status.color
+  )
+  doc.font('Helvetica').fontSize(9).fillColor(TEXT).text(bonusQuestion.question_text, PAGE_MARGIN + 18, y + 44, {
+    width: questionWidth,
+  })
+
+  if (comment) {
+    const isMissing = comment === 'Required comment missing'
+
+    doc
+      .font(isMissing ? 'Helvetica-Bold' : 'Helvetica')
+      .fontSize(8.2)
+      .fillColor(isMissing ? DANGER : MUTED)
+      .text(comment, PAGE_MARGIN + 18, doc.y + 8, {
+        width: questionWidth,
+      })
+  }
+
+  doc.font('Helvetica').fontSize(8).fillColor(MUTED).text(
+    'Outstanding Card is recorded separately from the core /95 score.',
+    PAGE_MARGIN + 18,
+    y + cardHeight - 20,
+    {
+      width: questionWidth,
+      lineBreak: false,
+    }
+  )
+  doc.y = y + cardHeight + 10
 }
 
 function drawQuestionDetail(
@@ -702,25 +870,15 @@ function drawQuestionDetail(
     )
   }
 
-  if (!bonusQuestion) {
-    return
+  if (bonusQuestion) {
+    drawOutstandingCardSection(
+      doc,
+      title,
+      bonusQuestion,
+      answersByQuestion.get(bonusQuestion.id),
+      audit
+    )
   }
-
-  sectionTitle(doc, 'Outstanding Card bonus', title)
-  ensureSpace(doc, 34, title)
-  doc.fontSize(11).fillColor(PRIMARY).text(
-    `Bonus result: ${bonusLabel(audit, answersByQuestion.get(bonusQuestion.id))}`,
-    PAGE_MARGIN,
-    doc.y
-  )
-  doc.moveDown(0.5)
-  drawQuestionRow(
-    doc,
-    bonusQuestion,
-    answersByQuestion.get(bonusQuestion.id),
-    0,
-    title
-  )
 }
 
 async function downloadEvidenceImages(
@@ -755,10 +913,10 @@ function drawPhotoBox(
   width: number,
   height: number
 ) {
-  doc.roundedRect(x, y, width, height, 8).strokeColor(BORDER).stroke()
+  doc.roundedRect(x, y, width, height, 8).fillAndStroke(SURFACE, BORDER)
 
   if (!evidence.image) {
-    doc.fontSize(8).fillColor(MUTED).text('Photo unavailable', x + 8, y + height / 2 - 6, {
+    doc.font('Helvetica').fontSize(8).fillColor(MUTED).text('Photo unavailable', x + 8, y + height / 2 - 6, {
       width: width - 16,
       align: 'center',
     })
@@ -772,7 +930,7 @@ function drawPhotoBox(
       valign: 'center',
     })
   } catch {
-    doc.fontSize(8).fillColor(MUTED).text('Photo unavailable', x + 8, y + height / 2 - 6, {
+    doc.font('Helvetica').fontSize(8).fillColor(MUTED).text('Photo unavailable', x + 8, y + height / 2 - 6, {
       width: width - 16,
       align: 'center',
     })
@@ -795,48 +953,85 @@ function drawPhotoAppendix(
 
   sectionTitle(doc, 'Photo Evidence Appendix', title)
 
-  const photoWidth = 150
-  const photoHeight = 102
+  const photoWidth = 158
+  const photoHeight = 106
   const gap = 12
 
   for (const question of questionsWithEvidence) {
     const evidence = evidenceByQuestion.get(question.id) ?? []
-    const titleHeight = doc.fontSize(9).heightOfString(
-      `${questionLabel(question)} - ${question.question_text}`,
-      { width: CONTENT_WIDTH }
-    )
+    const shortTitle =
+      question.question_text.length > 95
+        ? `${question.question_text.slice(0, 92).trimEnd()}...`
+        : question.question_text
+    const titleText = `${questionLabel(question)} - ${shortTitle}`
+    const titleHeight = doc.font('Helvetica-Bold').fontSize(9).heightOfString(titleText, {
+      width: CONTENT_WIDTH - 28,
+    })
     const rows = Math.ceil(evidence.length / 3)
-    const blockHeight = titleHeight + 10 + rows * photoHeight + (rows - 1) * gap + 14
+    const blockHeight = titleHeight + 36 + rows * photoHeight + (rows - 1) * gap
 
-    ensureSpace(doc, Math.min(blockHeight, 240), title)
-    doc.fontSize(9).fillColor(GRAPHITE).text(
-      `${questionLabel(question)} - ${question.question_text}`,
-      PAGE_MARGIN,
-      doc.y,
-      { width: CONTENT_WIDTH }
-    )
-    doc.moveDown(0.4)
+    ensureSpace(doc, Math.min(blockHeight + 10, 250), title)
+
+    let blockY = doc.y
+    doc.roundedRect(PAGE_MARGIN, blockY, CONTENT_WIDTH, blockHeight, 12).fillAndStroke(SURFACE_SOFT, BORDER)
+    doc.roundedRect(PAGE_MARGIN, blockY, 6, blockHeight, 3).fill(PRIMARY)
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(TEXT).text(titleText, PAGE_MARGIN + 14, blockY + 12, {
+      width: CONTENT_WIDTH - 28,
+    })
+    doc.font('Helvetica').fontSize(8).fillColor(MUTED).text(`${evidence.length} photo${evidence.length === 1 ? '' : 's'}`, PAGE_MARGIN + CONTENT_WIDTH - 92, blockY + 12, {
+      width: 74,
+      align: 'right',
+      lineBreak: false,
+    })
+
+    let gridY = blockY + titleHeight + 24
 
     evidence.forEach((item, index) => {
       if (index > 0 && index % 3 === 0) {
-        doc.y += photoHeight + gap
+        gridY += photoHeight + gap
       }
 
-      ensureSpace(doc, photoHeight + 20, title)
+      if (gridY + photoHeight > usablePageBottom(doc)) {
+        doc.y = blockY + blockHeight + 10
+        ensureSpace(doc, photoHeight + 62, title)
+        blockY = doc.y
+        gridY = blockY + 44
+        doc.roundedRect(PAGE_MARGIN, blockY, CONTENT_WIDTH, photoHeight + 58, 12).fillAndStroke(SURFACE_SOFT, BORDER)
+        doc.roundedRect(PAGE_MARGIN, blockY, 6, photoHeight + 58, 3).fill(PRIMARY)
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(TEXT).text(`${questionLabel(question)} - continued`, PAGE_MARGIN + 14, blockY + 12, {
+          width: CONTENT_WIDTH - 28,
+          lineBreak: false,
+        })
+      }
 
       const column = index % 3
       const x = PAGE_MARGIN + column * (photoWidth + gap)
-      const y = doc.y
 
-      drawPhotoBox(doc, item, x, y, photoWidth, photoHeight)
-
-      if (column === 2 || index === evidence.length - 1) {
-        doc.y = y
-      }
+      drawPhotoBox(doc, item, x, gridY, photoWidth, photoHeight)
     })
 
-    doc.y += photoHeight + 18
+    doc.y = Math.max(doc.y, gridY + photoHeight + 12)
   }
+}
+
+function drawReportNote(doc: PdfDocument) {
+  if (doc.y + 34 > usablePageBottom(doc)) {
+    return
+  }
+
+  const y = doc.y
+
+  doc.roundedRect(PAGE_MARGIN, y, CONTENT_WIDTH, 28, 8).fillAndStroke(SURFACE_SOFT, BORDER)
+  doc.font('Helvetica').fontSize(8).fillColor(MUTED).text(
+    'Report note: Outstanding Card is recorded separately from the core /95 score.',
+    PAGE_MARGIN + 12,
+    y + 10,
+    {
+      width: CONTENT_WIDTH - 24,
+      lineBreak: false,
+    }
+  )
+  doc.y = y + 38
 }
 
 function buildPdfBuffer(
@@ -846,7 +1041,7 @@ function buildPdfBuffer(
     const doc = new PDFDocument({
       size: 'A4',
       margin: PAGE_MARGIN,
-      bufferPages: true,
+      bufferPages: false,
       info: {
         Title: 'Audit Trainer report',
         Author: 'Audit Trainer',
@@ -859,25 +1054,6 @@ function buildPdfBuffer(
     doc.on('error', reject)
 
     build(doc)
-
-    const range = doc.bufferedPageRange()
-
-    for (let pageIndex = range.start; pageIndex < range.start + range.count; pageIndex += 1) {
-      doc.switchToPage(pageIndex)
-      doc
-        .fontSize(8)
-        .fillColor(MUTED)
-        .text(
-          `Audit Trainer report - Page ${pageIndex + 1} of ${range.count}`,
-          PAGE_MARGIN,
-          doc.page.height - 50,
-          {
-            width: CONTENT_WIDTH,
-            align: 'center',
-            lineBreak: false,
-          }
-        )
-    }
 
     doc.end()
   })
@@ -1061,15 +1237,8 @@ export async function GET(
       audit
     )
 
+    drawReportNote(doc)
     drawPhotoAppendix(doc, reportTitle, coreQuestions, evidenceByQuestion)
-
-    sectionTitle(doc, 'Report notes', reportTitle)
-    doc.fontSize(9).fillColor(MUTED).text(
-      'Scores are completed audit values stored by Audit Trainer. Outstanding Card bonus is separate and is not folded into the core /95 score.',
-      PAGE_MARGIN,
-      doc.y,
-      { width: CONTENT_WIDTH }
-    )
   })
 
   const fileName = `${sanitizeFileName(store.name)}-${audit.visit_date}-audit-report.pdf`
