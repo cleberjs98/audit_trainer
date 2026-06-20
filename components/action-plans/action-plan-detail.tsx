@@ -10,6 +10,7 @@ import {
   Gauge,
   ListChecks,
   Plus,
+  Sparkles,
   Store,
 } from 'lucide-react'
 
@@ -99,6 +100,8 @@ export function ActionPlanDetail({
   const completedItemCount = actionPlan.items.filter(
     (item) => item.status === 'completed'
   ).length
+  const canDownloadAiPdf =
+    Boolean(actionPlan.auditId) && actionPlan.auditStatus === 'completed'
 
   async function handlePlanStatusUpdate() {
     setIsUpdatingPlan(true)
@@ -196,6 +199,27 @@ export function ActionPlanDetail({
                       {actionPlan.summary ??
                         'Track manual follow-up actions for this completed audit.'}
                     </p>
+                    {canDownloadAiPdf ? (
+                      <div className="mt-5 flex flex-col gap-2">
+                        <a
+                          href={`/action-plans/${actionPlan.id}/ai-pdf`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/20 sm:w-auto"
+                        >
+                          <Sparkles aria-hidden="true" className="size-4" />
+                          Generate PDF
+                        </a>
+                        <p className="text-xs font-medium text-slate-300 lg:text-muted">
+                          PDF may take a few seconds on first generation.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="mt-5 rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-medium text-slate-300 lg:border-border lg:bg-surface-soft lg:text-muted">
+                        AI Action Plan PDF is available after the linked audit is
+                        completed.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
