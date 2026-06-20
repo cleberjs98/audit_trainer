@@ -14,10 +14,12 @@ import {
   ArrowLeft,
   ArrowRight,
   Camera,
+  CheckCircle2,
   ClipboardCheck,
   Download,
   Gauge,
   Image as ImageIcon,
+  LockKeyhole,
   Star,
   Target,
   Trash2,
@@ -477,6 +479,22 @@ function ActionPlanAuditCallout({
   return <GenerateAiActionPlanButton auditId={audit.id} />
 }
 
+function actionPlanStatusLabel(actionPlan: AuditChecklistProps['actionPlan']) {
+  if (!actionPlan) {
+    return 'Not created'
+  }
+
+  if (actionPlan.status === 'completed') {
+    return 'Completed'
+  }
+
+  if (actionPlan.status === 'in_progress') {
+    return 'In progress'
+  }
+
+  return 'Open'
+}
+
 function isRequiredCompletionMessage(message: string) {
   return message === 'Please complete all required questions before finishing the audit.'
 }
@@ -727,8 +745,8 @@ function QuestionInput({
 
   if (isBonusBoolean) {
     return (
-      <fieldset className="flex flex-col gap-3">
-        <legend className="text-sm font-semibold text-foreground">
+      <fieldset className="flex flex-col gap-3 rounded-2xl border border-border bg-surface-soft p-3 shadow-[0_10px_24px_rgba(23,26,31,0.04)]">
+        <legend className="px-1 text-sm font-semibold text-foreground">
           Outstanding Card bonus
         </legend>
         <p className="text-sm leading-6 text-muted">
@@ -755,7 +773,7 @@ function QuestionInput({
                 className={`min-h-12 rounded-lg border px-4 text-left text-sm font-semibold transition ${
                   selected
                     ? 'border-primary bg-primary text-white'
-                    : 'border-border bg-background text-foreground hover:border-primary hover:text-primary'
+                    : 'border-border bg-white text-foreground shadow-sm hover:border-primary hover:text-primary'
                 } disabled:cursor-not-allowed disabled:opacity-70`}
               >
                 {option.label}
@@ -769,8 +787,8 @@ function QuestionInput({
 
   if (isPretQuestion && question.scoringGroup === 'core') {
     return (
-      <fieldset className="flex flex-col gap-3">
-        <legend className="text-sm font-semibold text-foreground">
+      <fieldset className="flex flex-col gap-3 rounded-2xl border border-border bg-surface-soft p-3 shadow-[0_10px_24px_rgba(23,26,31,0.04)]">
+        <legend className="px-1 text-sm font-semibold text-foreground">
           Score
         </legend>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -803,7 +821,7 @@ function QuestionInput({
 
   return (
     <>
-      <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
+      <label className="flex flex-col gap-2 rounded-2xl border border-border bg-surface-soft p-3 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(23,26,31,0.04)]">
         Score
         <select
           value={draft.score}
@@ -811,7 +829,7 @@ function QuestionInput({
           onChange={(event) =>
             onDraftChange({ ...draft, score: event.currentTarget.value })
           }
-          className="min-h-12 rounded-xl border border-border bg-surface px-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:bg-background disabled:text-muted"
+          className="min-h-12 rounded-xl border border-border bg-white px-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:bg-background disabled:text-muted"
         >
           <option value="">Select score</option>
           {Array.from({ length: question.maxScore + 1 }, (_, score) => (
@@ -823,7 +841,7 @@ function QuestionInput({
       </label>
 
       {supportsNa ? (
-        <label className="flex min-h-12 items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground">
+        <label className="flex min-h-12 items-center gap-3 rounded-2xl border border-border bg-surface-soft px-3 py-3 text-sm font-semibold text-foreground">
           <input
             type="checkbox"
             disabled={readOnly}
@@ -1002,10 +1020,10 @@ function PhotoEvidenceSection({
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-surface-soft p-3">
+    <section className="rounded-2xl border border-border bg-white p-4 shadow-[0_12px_28px_rgba(23,26,31,0.05)]">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary-soft text-primary">
             <Camera aria-hidden="true" className="size-5" />
           </div>
           <div className="min-w-0">
@@ -1110,6 +1128,10 @@ function ReviewCompleteCard({
   missingCommentRequirements,
   missingRequiredPhotoRequirements,
   auditPeople,
+  actionPlan,
+  canManageActionPlans,
+  isAuditDetailsOpen,
+  onToggleAuditDetails,
   preview,
   onQuestionSelect,
 }: {
@@ -1122,6 +1144,10 @@ function ReviewCompleteCard({
   missingCommentRequirements: MissingCommentRequirement[]
   missingRequiredPhotoRequirements: MissingRequiredPhotoRequirement[]
   auditPeople: AuditPeopleValues
+  actionPlan: AuditChecklistProps['actionPlan']
+  canManageActionPlans: boolean
+  isAuditDetailsOpen: boolean
+  onToggleAuditDetails: () => void
   preview: ScorePreview
   onQuestionSelect: (index: number) => void
 }) {
@@ -1262,6 +1288,166 @@ function ReviewCompleteCard({
     } finally {
       setIsCompleting(false)
     }
+  }
+
+  if (readOnly) {
+    const actionPlanStatus = actionPlanStatusLabel(actionPlan)
+
+    return (
+      <div className="flex flex-col gap-4">
+        <section className="overflow-hidden rounded-[1.5rem] border border-border bg-surface shadow-[0_18px_45px_rgba(23,26,31,0.08)]">
+          <div className="bg-info p-4 text-white sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 gap-3">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-primary-soft">
+                  <CheckCircle2 aria-hidden="true" className="size-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary-soft">
+                    Completed audit
+                  </p>
+                  <h2 className="mt-2 text-2xl font-semibold text-white">
+                    Completed Summary
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-200">
+                    Answers are locked after completion. You can review results,
+                    download the report, or open the action plan.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/audits"
+                  className="inline-flex min-h-9 items-center justify-center rounded-xl bg-primary px-3 text-xs font-bold text-white shadow-sm transition hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/25"
+                >
+                  Audit History
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="inline-flex min-h-9 items-center justify-center rounded-xl bg-primary px-3 text-xs font-bold text-white shadow-sm transition hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/25"
+                >
+                  Dashboard
+                </Link>
+                <span className="inline-flex min-h-8 items-center gap-2 rounded-full bg-success-soft px-3 text-xs font-bold text-success">
+                  <CheckCircle2 aria-hidden="true" className="size-3.5" />
+                  Completed
+                </span>
+                <span className="inline-flex min-h-8 items-center gap-2 rounded-full bg-white/10 px-3 text-xs font-bold text-white">
+                  <LockKeyhole aria-hidden="true" className="size-3.5" />
+                  Locked
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 p-4 sm:p-5">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-border bg-background p-4">
+                <p className="text-xs font-semibold text-muted">Final score</p>
+                <p className="mt-2 text-lg font-bold text-foreground">
+                  {audit.maxScore > 0 ? persistedScoreLabel(audit) : scoreLabel(preview)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-background p-4">
+                <p className="text-xs font-semibold text-muted">Completed</p>
+                <p className="mt-2 text-sm font-bold leading-6 text-foreground">
+                  {formatDateTime(audit.completedAt)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-background p-4">
+                <p className="text-xs font-semibold text-muted">Action plan</p>
+                <p className="mt-2 text-lg font-bold text-foreground">
+                  {actionPlanStatus}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-surface-soft p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+                  <Users aria-hidden="true" className="size-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">
+                    People on duty
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-muted">
+                    Recorded context for this completed audit.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {auditPeopleFields.map((field) => (
+                  <div
+                    key={field.personType}
+                    className="rounded-xl border border-border bg-white px-3 py-3"
+                  >
+                    <p className="text-xs font-semibold text-muted">
+                      {field.label}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {savedPeopleValues[field.key] || 'Not recorded'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-white p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Report and action plan
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-muted">
+                    Download the official completed audit report or continue
+                    into the action plan workflow.
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:flex sm:shrink-0 sm:items-center">
+                  <a
+                    href={`/audits/${audit.id}/report`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/20"
+                  >
+                    <Download aria-hidden="true" className="size-4" />
+                    Download PDF Report
+                  </a>
+                  <button
+                    type="button"
+                    onClick={onToggleAuditDetails}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-4 focus:ring-primary/15"
+                  >
+                    {isAuditDetailsOpen ? 'Hide Audit' : 'Open Audit'}
+                    <ArrowRight aria-hidden="true" className="size-4" />
+                  </button>
+                  {actionPlan ? (
+                    <Link
+                      href={`/action-plans/${actionPlan.id}`}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-4 focus:ring-primary/15"
+                    >
+                      View Action Plan
+                      <ArrowRight aria-hidden="true" className="size-4" />
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+
+              {!actionPlan && !canManageActionPlans ? (
+                <div className="mt-3 rounded-xl border border-border bg-background px-3 py-3 text-sm font-medium text-muted">
+                  No action plan has been created yet.
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
+        {!actionPlan && canManageActionPlans ? (
+          <GenerateAiActionPlanButton auditId={audit.id} />
+        ) : null}
+      </div>
+    )
   }
 
   return (
@@ -1602,6 +1788,7 @@ export function AuditChecklist({
   const [saveState, setSaveState] =
     useState<SaveAnswerState>(initialSaveAnswerState)
   const [isSaving, setIsSaving] = useState(false)
+  const [isReadOnlyAuditOpen, setIsReadOnlyAuditOpen] = useState(false)
   const questionCardRef = useRef<HTMLDivElement>(null)
   const readOnly =
     audit.isLocked ||
@@ -1671,6 +1858,25 @@ export function AuditChecklist({
 
     setWizard({ mode: 'question', index: nextIndex })
     setSaveState(initialSaveAnswerState)
+    scrollQuestionIntoView()
+  }
+
+  function handleToggleReadOnlyAuditDetails() {
+    if (!readOnly) {
+      return
+    }
+
+    const nextOpenState = !isReadOnlyAuditOpen
+
+    setIsReadOnlyAuditOpen(nextOpenState)
+    setSaveState(initialSaveAnswerState)
+
+    if (nextOpenState) {
+      setWizard({ mode: 'question', index: 0 })
+    } else {
+      setWizard({ mode: 'review', index: Math.max(questions.length - 1, 0) })
+    }
+
     scrollQuestionIntoView()
   }
 
@@ -1786,56 +1992,81 @@ export function AuditChecklist({
         actionLabel="History"
       />
       <section className="relative z-10 mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 pb-28 pt-4 sm:px-6 lg:pb-8">
-        <nav
-          aria-label="Audit navigation"
-          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <Link
-            href="/audits"
-            className="inline-flex min-h-10 items-center justify-center rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm transition hover:border-primary hover:text-primary focus:outline-none focus:ring-4 focus:ring-primary/15"
-          >
-            Back to Audit History
-          </Link>
-          <Link
-            href="/dashboard"
-            className="inline-flex min-h-10 items-center justify-center rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground shadow-sm transition hover:border-primary hover:text-primary focus:outline-none focus:ring-4 focus:ring-primary/15"
-          >
-            Dashboard
-          </Link>
-        </nav>
+        {readOnly && isReadOnlyAuditOpen ? (
+          <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                  Audit details
+                </p>
+                <p className="mt-1 text-sm leading-6 text-muted">
+                  Review completed answers question by question.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleReadOnlyAuditDetails}
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border bg-white px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-4 focus:ring-primary/15"
+              >
+                Hide Audit
+              </button>
+            </div>
+          </section>
+        ) : null}
 
-        <section className="sticky top-0 z-30 rounded-[1.5rem] border border-white/10 bg-info/95 p-4 text-white shadow-[0_18px_45px_rgba(23,26,31,0.16)] backdrop-blur lg:border-border lg:bg-surface/95 lg:text-foreground">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-primary-soft lg:border-primary/20 lg:bg-primary-soft lg:text-primary">
-                <ClipboardCheck aria-hidden="true" className="size-5" />
+        {!readOnly || isReadOnlyAuditOpen ? (
+        <section className="rounded-[1.25rem] border border-white/10 bg-info/95 p-3 text-white shadow-[0_12px_30px_rgba(23,26,31,0.12)]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-primary-soft">
+                <ClipboardCheck aria-hidden="true" className="size-4.5" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-primary-soft lg:text-primary">
-                  {wizard.mode === 'review'
-                    ? 'Review'
-                    : currentQuestion
-                      ? `Question ${boundedStepIndex + 1} of ${questions.length}`
-                      : 'Checklist'}
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary-soft">
+                  {readOnly
+                    ? 'Completed audit'
+                    : wizard.mode === 'review'
+                      ? 'Review'
+                      : currentQuestion
+                        ? `Question ${boundedStepIndex + 1} of ${questions.length}`
+                        : 'Checklist'}
                 </p>
-                <p className="mt-1 text-xl font-semibold text-white sm:text-2xl lg:text-foreground">
+                <p className="mt-0.5 truncate text-lg font-semibold text-white sm:text-xl">
                   {audit.maxScore > 0
                     ? persistedScoreLabel(audit)
                     : scoreLabel(preview)}
                 </p>
-                <p className="mt-1 text-xs font-medium text-slate-300 lg:text-muted">
-                  {answeredTotal}/{questions.length} answered
-                </p>
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-slate-300">
+                  <span>
+                    {answeredTotal}/{questions.length} answered
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-0.5 text-[0.68rem] font-bold text-white">
+                    {progressValue}% complete
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-lg font-bold text-white lg:border-primary/20 lg:bg-primary-soft lg:text-primary">
-              {progressValue}%
-            </div>
+            {!readOnly ? (
+              <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:shrink-0">
+                  <Link
+                    href="/audits"
+                    className="inline-flex min-h-9 items-center justify-center rounded-xl bg-primary px-3 text-xs font-bold text-white shadow-[0_10px_20px_rgba(209,31,58,0.22)] transition hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/25"
+                  >
+                    Audit History
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    className="inline-flex min-h-9 items-center justify-center rounded-xl bg-primary px-3 text-xs font-bold text-white shadow-[0_10px_20px_rgba(209,31,58,0.22)] transition hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/25"
+                  >
+                    Dashboard
+                  </Link>
+              </div>
+            ) : null}
           </div>
 
           <div
             aria-hidden="true"
-            className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/15 lg:bg-background"
+            className="mt-2.5 h-2 overflow-hidden rounded-full bg-white/15"
           >
             <div
               className="h-full rounded-full bg-primary transition-all"
@@ -1844,13 +2075,13 @@ export function AuditChecklist({
           </div>
 
           {questions.length > 0 ? (
-            <nav aria-label="Jump to question" className="mt-3">
-              <div className="relative overflow-x-auto pb-2 pt-2">
+            <nav aria-label="Jump to question" className="mt-2.5">
+              <div className="relative overflow-x-auto pb-2 pt-1.5 [scrollbar-color:rgba(209,31,58,0.7)_rgba(255,255,255,0.14)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/70 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-white/10">
                 <div
                   aria-hidden="true"
-                  className="absolute left-6 right-6 top-7 h-1 rounded-full bg-white/15 lg:bg-border"
+                  className="absolute left-5 right-5 top-6 h-0.5 rounded-full bg-white/15"
                 />
-                <div className="relative flex min-w-max gap-3 px-1">
+                <div className="relative flex min-w-max gap-2.5 px-1">
                 {questions.map((question, index) => {
                   const active =
                     wizard.mode === 'question' && index === boundedStepIndex
@@ -1866,7 +2097,7 @@ export function AuditChecklist({
                       aria-label={stepperAriaLabel(question, active)}
                     >
                       <span
-                        className={`flex size-10 items-center justify-center border-2 text-xs font-black transition group-hover:scale-105 ${
+                        className={`flex size-9 items-center justify-center border-2 text-xs font-black transition group-hover:scale-105 ${
                           question.scoringGroup === 'bonus'
                             ? 'rounded-full text-base'
                             : 'rounded-full'
@@ -1879,7 +2110,7 @@ export function AuditChecklist({
                       {subLabel ? (
                         <span
                           className={`h-4 max-w-14 truncate text-[0.65rem] font-semibold ${
-                            active ? 'text-primary' : 'text-muted'
+                            active ? 'text-primary-soft' : 'text-slate-300'
                           }`}
                         >
                           {subLabel}
@@ -1888,7 +2119,7 @@ export function AuditChecklist({
                         <span
                           aria-hidden="true"
                           className={`mt-1 size-1.5 rounded-full ${
-                            active ? 'bg-primary' : 'bg-border'
+                            active ? 'bg-primary' : 'bg-white/30'
                           }`}
                         />
                       )}
@@ -1900,14 +2131,25 @@ export function AuditChecklist({
             </nav>
           ) : null}
         </section>
+        ) : null}
 
-        {readOnly ? (
-          <section className="rounded-2xl border border-warning/20 bg-warning-soft p-4 text-warning shadow-sm">
-            <p className="text-sm font-semibold">Read-only audit</p>
-            <p className="mt-2 text-sm leading-6">
-              This audit is completed or locked. You can review the checklist,
-              but answer changes are disabled in the normal app flow.
-            </p>
+        {readOnly && isReadOnlyAuditOpen ? (
+          <section className="rounded-2xl border border-border bg-surface p-4 text-muted shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-info-soft text-info">
+                <LockKeyhole aria-hidden="true" className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">
+                  Audit locked
+                </p>
+                <p className="mt-1 text-sm leading-6 text-muted">
+                  Answers are locked after completion. You can review the
+                  checklist, report, and action plan without changing saved
+                  results.
+                </p>
+              </div>
+            </div>
           </section>
         ) : null}
 
@@ -1921,17 +2163,19 @@ export function AuditChecklist({
           </section>
         ) : null}
 
-        <ActionPlanAuditCallout
-          audit={audit}
-          actionPlan={actionPlan}
-          canManageActionPlans={canManageActionPlans}
-        />
+        {!readOnly ? (
+          <ActionPlanAuditCallout
+            audit={audit}
+            actionPlan={actionPlan}
+            canManageActionPlans={canManageActionPlans}
+          />
+        ) : null}
 
         <div
           ref={questionCardRef}
           className="relative z-10 pointer-events-auto"
         >
-          {wizard.mode === 'review' ? (
+          {readOnly && !isReadOnlyAuditOpen ? (
             <ReviewCompleteCard
               audit={audit}
               readOnly={readOnly}
@@ -1942,11 +2186,33 @@ export function AuditChecklist({
               missingCommentRequirements={missingCommentRequirements}
               missingRequiredPhotoRequirements={missingRequiredPhotoRequirements}
               auditPeople={auditPeople}
+              actionPlan={actionPlan}
+              canManageActionPlans={canManageActionPlans}
+              isAuditDetailsOpen={isReadOnlyAuditOpen}
+              onToggleAuditDetails={handleToggleReadOnlyAuditDetails}
+              preview={preview}
+              onQuestionSelect={handleJumpToStep}
+            />
+          ) : wizard.mode === 'review' ? (
+            <ReviewCompleteCard
+              audit={audit}
+              readOnly={readOnly}
+              questions={questions}
+              answeredCoreCount={answeredCoreCount}
+              requiredCoreCount={requiredCoreQuestions.length}
+              missingRequiredCoreQuestions={missingRequiredCoreQuestions}
+              missingCommentRequirements={missingCommentRequirements}
+              missingRequiredPhotoRequirements={missingRequiredPhotoRequirements}
+              auditPeople={auditPeople}
+              actionPlan={actionPlan}
+              canManageActionPlans={canManageActionPlans}
+              isAuditDetailsOpen={isReadOnlyAuditOpen}
+              onToggleAuditDetails={handleToggleReadOnlyAuditDetails}
               preview={preview}
               onQuestionSelect={handleJumpToStep}
             />
           ) : currentQuestion ? (
-            <section className="app-card rounded-[1.5rem] p-3 sm:p-4">
+            <section className="rounded-[1.5rem] border border-border bg-surface p-2 shadow-[0_18px_45px_rgba(23,26,31,0.08)] sm:p-3">
               <article className="rounded-[1.35rem] border border-border bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-wrap items-center gap-2">
@@ -1959,16 +2225,16 @@ export function AuditChecklist({
                       {sectionLabel(currentQuestion)}
                     </span>
                     {currentQuestion.isRequired ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-soft px-2 py-1 text-xs font-semibold text-primary">
                         <AlertCircle aria-hidden="true" className="size-3.5" />
                         Required
                       </span>
                     ) : (
-                      <span className="rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
+                      <span className="rounded-full border border-border bg-surface-soft px-2 py-1 text-xs font-semibold text-muted">
                         Optional
                       </span>
                     )}
-                    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-1 text-xs font-semibold text-muted">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-info-soft px-2 py-1 text-xs font-semibold text-info">
                       <Gauge aria-hidden="true" className="size-3.5" />
                       Max {currentQuestion.maxScore}
                     </span>
@@ -1990,7 +2256,13 @@ export function AuditChecklist({
 
                 <div className="mt-5 flex flex-col gap-4">
                   {currentDraft ? (
-                    <label className="flex min-h-12 items-start gap-3 rounded-lg border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground">
+                    <label
+                      className={`flex min-h-12 items-start gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold transition ${
+                        currentDraft.isCriticalFlag
+                          ? 'border-danger/25 bg-danger-soft text-danger'
+                          : 'border-border bg-surface-soft text-foreground'
+                      }`}
+                    >
                       <input
                         type="checkbox"
                         disabled={readOnly}
@@ -2030,10 +2302,10 @@ export function AuditChecklist({
                     onEvidenceRemoved={handleEvidenceRemoved}
                   />
 
-                  <label className="flex flex-col gap-2 text-sm font-semibold text-foreground">
+                  <label className="flex flex-col gap-2 rounded-2xl border border-border bg-surface-soft p-3 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(23,26,31,0.04)]">
                     {currentCommentRequirement ? 'Required comment' : 'Notes'}
                     {currentCommentRequirement ? (
-                      <span className="rounded-lg border border-warning/20 bg-warning-soft px-3 py-2 text-xs font-semibold leading-5 text-warning">
+                      <span className="rounded-lg border border-primary/20 bg-primary-soft px-3 py-2 text-xs font-semibold leading-5 text-primary">
                         {commentRequirementText(currentCommentRequirement)}
                       </span>
                     ) : null}
@@ -2059,7 +2331,7 @@ export function AuditChecklist({
                           ? 'Add the required comment before completing.'
                           : 'Optional notes'
                       }
-                      className="rounded-xl border border-border bg-surface px-3 py-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:bg-background disabled:text-muted"
+                      className="rounded-xl border border-border bg-white px-3 py-3 text-base font-medium text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:bg-background disabled:text-muted"
                     />
                   </label>
 
