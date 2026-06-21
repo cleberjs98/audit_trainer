@@ -53,6 +53,26 @@ type InvitationRow = {
   expires_at: string
 }
 
+type InviteLookupResult =
+  | {
+      invitation: InvitationRow
+      error: null
+      reason: 'valid'
+    }
+  | {
+      invitation: null
+      error: string
+      reason:
+        | 'missing_token'
+        | 'setup_error'
+        | 'query_error'
+        | 'not_found'
+        | 'accepted'
+        | 'inactive'
+        | 'expired'
+        | 'unsupported_role'
+    }
+
 export type InvitePreviewResult =
   | {
       status: 'valid'
@@ -113,6 +133,58 @@ function normalizeEmail(email: string) {
 
 function hashToken(rawToken: string) {
   return createHash('sha256').update(rawToken.trim()).digest('hex')
+}
+
+function safeErrorMeta(error: unknown) {
+  if (!error || typeof error !== 'object') {
+    return {
+      name: 'UnknownError',
+      message: 'Unknown error',
+    }
+  }
+
+  const maybeError = error as {
+    name?: unknown
+    message?: unknown
+    code?: unknown
+    details?: unknown
+    hint?: unknown
+  }
+
+  return {
+    name: typeof maybeError.name === 'string' ? maybeError.name : 'Error',
+    message:
+      typeof maybeError.message === 'string'
+        ? maybeError.message
+        : 'Unknown error',
+    code: typeof maybeError.code === 'string' ? maybeError.code : undefined,
+    details:
+      typeof maybeError.details === 'string' ? maybeError.details : undefined,
+    hint: typeof maybeError.hint === 'string' ? maybeError.hint : undefined,
+  }
+}
+
+function logInviteValidationEvent({
+  rawToken,
+  stage,
+  reason,
+  error,
+}: {
+  rawToken: string
+  stage: string
+  reason: string
+  error?: unknown
+}) {
+  const token = rawToken.trim()
+
+  console.error('[accept-invite-validation]', {
+    route: '/accept-invite',
+    tokenPresent: token.length > 0,
+    tokenLength: token.length,
+    stage,
+    reason,
+    error: error ? safeErrorMeta(error) : undefined,
+  })
 }
 
 function isDuplicateAuthUserError(message: string | undefined) {
@@ -195,17 +267,39 @@ async function loadScopeContext(
   return { areaName, storeName, storeCode }
 }
 
-async function loadPendingInviteByToken(rawToken: string) {
+async function loadPendingInviteByToken(
+  rawToken: string
+): Promise<InviteLookupResult> {
   const token = rawToken.trim()
 
   if (!token) {
     return {
       invitation: null,
       error: 'Invitation token is missing.',
+      reason: 'missing_token',
     }
   }
 
-  const admin = createAdminClient()
+  let admin: ReturnType<typeof createAdminClient>
+
+  try {
+    admin = createAdminClient()
+  } catch (error) {
+    logInviteValidationEvent({
+      rawToken,
+      stage: 'create-admin-client',
+      reason: 'setup_error',
+      error,
+    })
+
+    return {
+      invitation: null,
+      error:
+        'Invite setup is not ready. Ask an admin to configure invite onboarding.',
+      reason: 'setup_error',
+    }
+  }
+
   const { data: invitation, error } = await admin
     .from('user_invitations')
     .select(
@@ -215,68 +309,113 @@ async function loadPendingInviteByToken(rawToken: string) {
     .maybeSingle<InvitationRow>()
 
   if (error) {
+    logInviteValidationEvent({
+      rawToken,
+      stage: 'load-invitation',
+      reason: 'query_error',
+      error,
+    })
+
     return {
       invitation: null,
       error: 'We could not verify this invitation. Ask your manager to send a new invite.',
+      reason: 'query_error',
     }
   }
 
   if (!invitation) {
+    logInviteValidationEvent({
+      rawToken,
+      stage: 'load-invitation',
+      reason: 'not_found',
+    })
+
     return {
       invitation: null,
       error: 'This invitation link is invalid or has already been removed.',
+      reason: 'not_found',
     }
   }
 
   if (invitation.status === 'accepted') {
+    logInviteValidationEvent({
+      rawToken,
+      stage: 'validate-invitation-state',
+      reason: 'accepted',
+    })
+
     return {
       invitation: null,
       error: 'This invitation has already been used.',
+      reason: 'accepted',
     }
   }
 
   if (invitation.status !== 'pending') {
+    logInviteValidationEvent({
+      rawToken,
+      stage: 'validate-invitation-state',
+      reason: 'inactive',
+    })
+
     return {
       invitation: null,
       error: 'This invitation is no longer active. Ask your manager to send a new invite.',
+      reason: 'inactive',
     }
   }
 
   if (new Date(invitation.expires_at).getTime() <= Date.now()) {
-    await admin
+    const { error: expireError } = await admin
       .from('user_invitations')
       .update({ status: 'expired' })
       .eq('id', invitation.id)
       .eq('status', 'pending')
 
+    logInviteValidationEvent({
+      rawToken,
+      stage: 'validate-invitation-state',
+      reason: 'expired',
+      error: expireError,
+    })
+
     return {
       invitation: null,
       error: 'This invitation has expired. Ask your manager to send a new invite.',
+      reason: 'expired',
     }
   }
 
   if (!isUserRole(invitation.role)) {
+    logInviteValidationEvent({
+      rawToken,
+      stage: 'validate-invitation-role',
+      reason: 'unsupported_role',
+    })
+
     return {
       invitation: null,
       error: 'This invitation has an unsupported role. Ask your manager to send a new invite.',
+      reason: 'unsupported_role',
     }
   }
 
-  return { invitation, error: null }
+  return { invitation, error: null, reason: 'valid' }
 }
 
 export async function getInvitePreview(
   rawToken: string
 ): Promise<InvitePreviewResult> {
   try {
-    const { invitation, error } = await loadPendingInviteByToken(rawToken)
+    const { invitation, error, reason } =
+      await loadPendingInviteByToken(rawToken)
 
     if (error || !invitation) {
-      if (error?.includes('already been used')) {
+      if (reason === 'accepted') {
         return { status: 'accepted', message: error }
       }
 
-      if (error?.includes('expired')) {
+      if (reason === 'expired') {
         return { status: 'expired', message: error }
       }
 
