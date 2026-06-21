@@ -1,6 +1,10 @@
 import Link from 'next/link'
 
-import { acceptInviteAction } from '@/app/accept-invite/actions'
+import { AcceptInviteForm } from '@/app/accept-invite/accept-invite-form'
+import {
+  acceptInviteAction,
+  getInvitePreview,
+} from '@/app/accept-invite/actions'
 import { createClient } from '@/lib/supabase/server'
 
 type AcceptInvitePageProps = {
@@ -18,6 +22,34 @@ function roleLabel(role: string) {
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
+}
+
+function normalizeEmail(email: string | null | undefined) {
+  return String(email ?? '').trim().toLowerCase()
+}
+
+function scopeLabel({
+  areaName,
+  storeName,
+  storeCode,
+}: {
+  areaName: string | null
+  storeName: string | null
+  storeCode: string | null
+}) {
+  if (storeName && storeCode) {
+    return `${storeName} (${storeCode})`
+  }
+
+  if (storeName) {
+    return storeName
+  }
+
+  if (areaName) {
+    return areaName
+  }
+
+  return 'All areas and stores'
 }
 
 function PageShell({ children }: { children: React.ReactNode }) {
@@ -97,29 +129,92 @@ export default async function AcceptInvitePage({
     )
   }
 
+  const preview = await getInvitePreview(token)
+
+  if (preview.status !== 'valid') {
+    return (
+      <PageShell>
+        <div className="rounded-2xl border border-danger/20 bg-danger-soft p-5">
+          <h2 className="text-lg font-semibold text-foreground">
+            Invitation unavailable
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-muted-strong">
+            {preview.message}
+          </p>
+        </div>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <ActionLink href="/login">Go to login</ActionLink>
+          <ActionLink href="/dashboard" primary>
+            Dashboard
+          </ActionLink>
+        </div>
+      </PageShell>
+    )
+  }
+
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
+  if (user && normalizeEmail(user.email) !== preview.invitation.normalizedEmail) {
     return (
       <PageShell>
-        <div className="rounded-2xl border border-warning/25 bg-warning-soft p-5">
+        <div className="rounded-2xl border border-danger/20 bg-danger-soft p-5">
           <h2 className="text-lg font-semibold text-foreground">
-            Sign in required
+            This invite is for a different email
           </h2>
           <p className="mt-2 text-sm leading-6 text-muted-strong">
-            Sign in with the email address that received this invitation, then
-            open the invite link again to finish setup.
+            Please sign out and open the link again with{' '}
+            <span className="font-semibold text-foreground">
+              {preview.invitation.email}
+            </span>
+            .
           </p>
         </div>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <ActionLink href="/login" primary>
-            Go to login
+          <ActionLink href="/dashboard" primary>
+            Dashboard
           </ActionLink>
-          <ActionLink href="/dashboard">Dashboard</ActionLink>
+          <ActionLink href="/login">Switch account</ActionLink>
         </div>
+      </PageShell>
+    )
+  }
+
+  if (!user) {
+    const inviteScopeLabel = scopeLabel(preview.invitation)
+
+    return (
+      <PageShell>
+        <div className="rounded-2xl border border-border bg-surface-soft p-5">
+          <h2 className="text-xl font-semibold text-foreground">
+            Accept your invitation
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-muted-strong">
+            Create your Audit Trainer account to continue.
+          </p>
+        </div>
+
+        <dl className="my-6 grid gap-3 rounded-2xl border border-border bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-sm font-medium text-muted">Role</dt>
+            <dd className="text-right text-sm font-semibold text-foreground">
+              {roleLabel(preview.invitation.role)}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-sm font-medium text-muted">Scope</dt>
+            <dd className="text-right text-sm font-semibold text-foreground">
+              {inviteScopeLabel}
+            </dd>
+          </div>
+        </dl>
+
+        <AcceptInviteForm
+          token={token}
+          email={preview.invitation.email}
+        />
       </PageShell>
     )
   }
@@ -147,10 +242,11 @@ export default async function AcceptInvitePage({
     )
   }
 
-  const scopeLabel =
-    result.storeName && result.storeCode
-      ? `${result.storeName} (${result.storeCode})`
-      : result.areaName ?? 'Workspace access'
+  const acceptedScopeLabel = scopeLabel({
+    areaName: result.areaName,
+    storeName: result.storeName,
+    storeCode: result.storeCode,
+  })
 
   return (
     <PageShell>
@@ -173,7 +269,7 @@ export default async function AcceptInvitePage({
         <div className="flex items-center justify-between gap-4">
           <dt className="text-sm font-medium text-muted">Scope</dt>
           <dd className="text-right text-sm font-semibold text-foreground">
-            {scopeLabel}
+            {acceptedScopeLabel}
           </dd>
         </div>
       </dl>
