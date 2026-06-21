@@ -1050,7 +1050,8 @@ function PhotoEvidenceSection({
             <input
               ref={inputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/*"
+              capture="environment"
               className="hidden"
               onChange={handleFileChange}
             />

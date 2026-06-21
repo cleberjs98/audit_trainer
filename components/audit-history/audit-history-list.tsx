@@ -8,6 +8,7 @@ import {
   FileText,
   Lock,
   LockOpen,
+  Plus,
   Search,
   SlidersHorizontal,
   Store,
@@ -305,9 +306,13 @@ export function AuditHistoryList({
                 {filteredAudits.length === 1 ? 'audit' : 'audits'} in scope
               </p>
             </div>
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white">
-              <ClipboardList aria-hidden="true" className="size-5" />
-            </div>
+            <Link
+              href="/start-audit"
+              aria-label="Start audit"
+              className="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white shadow-[0_12px_26px_rgba(209,31,58,0.28)] transition hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/25"
+            >
+              <Plus aria-hidden="true" className="size-6" />
+            </Link>
           </div>
         </section>
 
